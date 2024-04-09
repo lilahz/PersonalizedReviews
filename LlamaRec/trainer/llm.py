@@ -96,12 +96,11 @@ class LLMTrainer(Trainer):
             label_words={i: chr(ord('A')+i) for i in range(args.llm_negative_sample_size+1)},
         )
         
-        wandb_run_name = f'LlamaRec_{args.dataset_code}{args.category.replace(" & ", "_")}_{args.signal}_test4'
+        wandb_run_name = f'LlamaRec_{args.dataset_code}{args.category.replace(" & ", "_")}_{args.signal}'
         if args.summary:
             wandb_run_name = wandb_run_name + '_summary'
 
         hf_args = TrainingArguments(
-            # resume_from_checkpoint='/sise/bshapira-group/lilachzi/models/LlamaRec/experiments/Llama-2-7b-hf/ciao_Games_like_v2/checkpoint-10',
             per_device_train_batch_size=args.lora_micro_batch_size,
             gradient_accumulation_steps=args.train_batch_size//args.lora_micro_batch_size,
             warmup_steps=args.warmup_steps,
@@ -115,13 +114,11 @@ class LLMTrainer(Trainer):
             eval_steps=args.lora_val_iterations,
             save_steps=args.lora_val_iterations,
             output_dir=export_root,
-            # save_total_limit=3,
             save_total_limit=1,
             load_best_model_at_end=True,
             ddp_find_unused_parameters=None,
             group_by_length=False,
             report_to="wandb" if use_wandb else None,
-            # run_name=args.model_code+'_'+args.dataset_code if use_wandb else None,
             run_name=wandb_run_name if use_wandb else None,
             metric_for_best_model=args.rerank_best_metric,
             greater_is_better=True,
@@ -157,20 +154,6 @@ class LLMTrainer(Trainer):
         print('************************************************************')
         with open(os.path.join(EXPERIMENT_ROOT, 'model_results.json'), 'a+') as f:
                 json.dump(average_metrics, f, indent=4)
-
-        # print('Original Performance:', test_retrieval['original_metrics'])
-        # print('************************************************************')
-        # original_size = test_retrieval['original_size']
-        # retrieval_size = test_retrieval['retrieval_size']
-        
-        # overall_metrics = {}
-        # for key in test_retrieval['non_retrieval_metrics'].keys():
-        #     if 'test_' + key in average_metrics:
-        #         overall_metrics['test_' + key] = (average_metrics['test_' + key] * retrieval_size  + \
-        #             test_retrieval['non_retrieval_metrics'][key] * (original_size - retrieval_size)) / original_size
-        # print('Overall Performance of Our Framework:', overall_metrics)
-        # with open(os.path.join(self.export_root, 'overall_metrics.json'), 'w') as f:
-        #         json.dump(overall_metrics, f, indent=4)
         
         return average_metrics
 

@@ -34,10 +34,9 @@ def main(args, export_root=None):
         if args.summary:
             export_root = os.path.join(EXPERIMENT_ROOT, f'{args.dataset_code}{args.category.replace(" & ", "_")}_{args.signal}_summary')
         else:
-            export_root = os.path.join(EXPERIMENT_ROOT, f'{args.dataset_code}{args.category.replace(" & ", "_")}_{args.signal}_test4')
+            export_root = os.path.join(EXPERIMENT_ROOT, f'{args.dataset_code}{args.category.replace(" & ", "_")}_{args.signal}')
         args.export_root = export_root
 
-    # train_loader, val_loader, test_loader, tokenizer, test_retrieval = dataloader_factory(args)
     train_loader, val_loader, test_loader, tokenizer = dataloader_factory(args)
     bnb_config = BitsAndBytesConfig(
         load_in_4bit=True,
@@ -67,7 +66,7 @@ def main(args, export_root=None):
     model.config.use_cache = False
     trainer = LLMTrainer(args, model, train_loader, val_loader, test_loader, tokenizer, export_root, args.use_wandb)
     
-    # trainer.train()
+    trainer.train()
     trainer.test()
 
 

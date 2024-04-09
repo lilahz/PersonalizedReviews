@@ -59,29 +59,6 @@ def calc_hit_at_k(y_pred, k):
         return 1
     else:
         return 0 
-    
-# def get_real_labels(rank, mode):
-#     mode = 'valid' if mode == 'eval' else 'test'
-#     eval_labels = os.path.join(RAW_DATASET_ROOT_FOLDER, 'preprocessed', 
-#                                f'{args.dataset_code}_{args.category.replace(" & ", "_")}_{args.signal}', 'evaluation.pkl')
-#     with open(eval_labels, 'rb') as f:
-#         real_labels = pickle.load(f)
-        
-#     # since predictions are for all available classes, we need to fix based on each candidate list
-#     real_labels = real_labels[f'{mode}_labels'][:len(rank)]
-#     real_lens = torch.tensor([len(l) for l in real_labels])
-#     mask = rank < real_lens.unsqueeze(1)
-#     masked_rank = torch.where(mask, rank, -1)
-    
-#     ranked_labels = []    
-#     for rank, labels in zip(masked_rank, real_labels):
-#         labels = torch.tensor(labels)
-#         result = torch.index_select(labels, 0, rank[rank>=0]).cpu().numpy().tolist()
-#         if len(result) < len(labels):
-#             result += labels[len(result):].cpu().numpy().tolist()
-#         ranked_labels.append(str(result))
-        
-#     return ranked_labels
 
 def calculate_sliding_window_scores(scores):
     label_score = {idx: [score] for idx, score in enumerate(scores[0].tolist())}
@@ -96,15 +73,11 @@ def calculate_sliding_window_scores(scores):
     
 
 def get_real_labels(model_scores, mode):
-    # torch.save(model_scores, os.path.join(args.export_root, 'model_scores.pt'))
-    # torch.save(model_labels, os.path.join(args.export_root, 'model_labels.pt'))
-    
     mode = 'valid' if mode == 'eval' else 'test'
     eval_labels = os.path.join(RAW_DATASET_ROOT_FOLDER, 'preprocessed', 
                                f'{args.dataset_code}_{args.category.replace(" & ", "_")}_{args.signal}', f'{mode}_labels.pkl')
     with open(eval_labels, 'rb') as f:
         real_labels = pickle.load(f)
-    # real_labels = real_labels[f'{mode}_labels'][:len(model_scores)]
     real_labels = real_labels[:len(model_scores)]
     
     ranks = []
@@ -125,20 +98,9 @@ def get_real_labels(model_scores, mode):
             
         batches = len([i for i in range(0, len(labels) - 1, batch_size - 1)])
         scores = model_scores[i:i+batches]
-        
-        # if len(scores) > 1:
-        #     scores = scores / torch.sum(scores, dim=1, keepdim=True)
-        # answers = model_labels[i:i+batches]
         i += batches
         
-        # answer_score = torch.mean(torch.stack([scores[i, idx] for i, idx in enumerate(answers)])).reshape(-1)
-        
-        # mask = torch.ones_like(scores, dtype=torch.bool)
-        # mask[torch.arange(len(answers)), answers] = 0
-        # other_scores = scores[mask].flatten()
         scores = scores.flatten()
-        
-        # rank = (-torch.cat([answer_score, other_scores])).argsort(dim=-1)
         rank = (-scores).argsort(dim=-1)
         if len(rank) > len(labels):
             mask = rank < len(labels)
@@ -151,14 +113,8 @@ def get_real_labels(model_scores, mode):
     return ranked_labels, ranks
 
 def absolute_recall_mrr_ndcg_for_ks(scores, labels, ks, mode):
-    # labels = F.one_hot(labels, num_classes=scores.size(1))
-    # rank = (-scores).argsort(dim=1)
-    
-    # real_labels = get_real_labels(rank, labels, mode)
     real_labels, rank = get_real_labels(scores, mode)
     eval_df = pd.DataFrame(real_labels, columns=['y'])
-    # eval_df['scores'] = [str(s) for s in scores.cpu().numpy().tolist()]
-    # eval_df['rank'] = [str(r) for r in rank.cpu().numpy().tolist()]
     eval_df['rank'] = rank
     eval_df['y'] = eval_df['y'].apply(eval)
     
@@ -176,7 +132,6 @@ def absolute_recall_mrr_ndcg_for_ks(scores, labels, ks, mode):
     
     if mode == 'test':
         eval_df.to_csv(os.path.join(args.export_root, 'predictions.csv'), index=False)
-        # eval_df.to_csv(os.path.join(EXPERIMENT_ROOT, 'Llama-2-7b-hf', f'{args.dataset_code}_{args.signal}_v3', 'predictions.csv'), index=False)
     else:
         datetime_string = datetime.now().strftime("%Y_%m_%d_%H_%M")
         eval_df.to_csv(os.path.join(args.export_root, f'eval_predictions_{datetime_string}.csv'), index=False)
