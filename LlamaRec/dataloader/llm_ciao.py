@@ -228,50 +228,29 @@ class LLMValidDataset(data_utils.Dataset):
         self.all_labels = []
         for u in u2seq.keys():
             for seq, cand, labels in zip(u2seq[u], u2cand[u], u2labels[u]):
-                # answer = seq[-1]
                 self.rng.shuffle(cand)
-                # self.all_labels.append([labels[answer]] + [labels[i] for i in cand if i != answer])
                 self.all_labels.append([labels[i] for i in cand])
                 
                 # try window sliding
-                if len(cand) <= self.args.llm_negative_sample_size + 1:
-                    self.all_seqs += [seq]
-                    # self.rng.shuffle(cand)
-                    self.all_cands += [cand]
-                else:
-                    for i in range(0, len(cand)- args.sliding_window_size + 1, args.sliding_window_step):
-                        self.all_seqs += [seq]
-                        self.all_cands += [cand[i:i+args.sliding_window_size]]
-                    
                 # if len(cand) <= self.args.llm_negative_sample_size + 1:
                 #     self.all_seqs += [seq]
-                #     # self.rng.shuffle(cand)
                 #     self.all_cands += [cand]
                 # else:
-                #     for i in range(0, len(cand), args.llm_negative_sample_size+1):
+                #     for i in range(0, len(cand)- args.sliding_window_size + 1, args.sliding_window_step):
                 #         self.all_seqs += [seq]
-                #         batch = cand[i:i+args.llm_negative_sample_size]
-                #         # self.rng.shuffle(batch)
-                #         self.all_cands += [batch]
-                        
-                    # cand.pop(cand.index(answer))
-                    # for i in range(0, len(cand), args.llm_negative_sample_size):
-                    #     self.all_seqs += [seq]
-                    #     batch = cand[i:i+args.llm_negative_sample_size] + [answer]
-                    #     # self.rng.shuffle(batch)
-                    #     self.all_cands += [batch]
+                #         self.all_cands += [cand[i:i+args.sliding_window_size]]
+                    
+                if len(cand) <= self.args.llm_negative_sample_size + 1:
+                    self.all_seqs += [seq]
+                    self.all_cands += [cand]
+                else:
+                    for i in range(0, len(cand), args.llm_negative_sample_size+1):
+                        self.all_seqs += [seq]
+                        batch = cand[i:i+args.llm_negative_sample_size]
+                        self.all_cands += [batch]
         
         with open(save_folder.joinpath('valid_labels.pkl'), 'wb') as f:
             pickle.dump(self.all_labels, f)
-        # self.all_seqs = []
-        # for u in u2seq.keys():
-        #     for seq in u2seq[u]:
-        #         self.all_seqs += [seq]
-                    
-        # self.all_cands = []
-        # for u in u2cand.keys():
-        #     for cand in u2cand[u]:
-        #         self.all_cands += [cand]
 
     def __len__(self):
         return len(self.all_seqs)
@@ -282,8 +261,6 @@ class LLMValidDataset(data_utils.Dataset):
         
         seq = seq[-self.max_len:]
         candidates = self.all_cands[index]
-        # assert answer in candidates
-        # self.rng.shuffle(candidates)
         
         return seq_to_token_ids(self.args, seq, candidates, answer, self.text_dict, self.tokenizer, self.prompter, eval=True)
 
@@ -304,9 +281,7 @@ class LLMTestDataset(data_utils.Dataset):
         self.all_labels = []
         for u in u2seq.keys():
             for seq, cand, labels in zip(u2seq[u], u2cand[u], u2labels[u]):
-                # answer = seq[-1]
-                # self.rng.shuffle(cand)
-                # self.all_labels.append([labels[answer]] + [labels[i] for i in cand if i != answer])
+                self.rng.shuffle(cand)
                 self.all_labels.append([labels[i] for i in cand])
                 
                 # try window sliding
@@ -321,33 +296,15 @@ class LLMTestDataset(data_utils.Dataset):
                     
                 if len(cand) <= 20:
                     self.all_seqs += [seq]
-                    # self.rng.shuffle(cand)
                     self.all_cands += [cand]
                 else:
                     for i in range(0, len(cand), args.llm_negative_sample_size+1):
                         self.all_seqs += [seq]
                         batch = cand[i:i+args.llm_negative_sample_size]
-                        # self.rng.shuffle(batch)
                         self.all_cands += [batch]
-                        
-                    # cand.pop(cand.index(answer))
-                    # for i in range(0, len(cand), args.llm_negative_sample_size):
-                    #     self.all_seqs += [seq]
-                    #     batch = cand[i:i+args.llm_negative_sample_size] + [answer]
-                    #     # self.rng.shuffle(batch)
-                    #     self.all_cands += [batch]
         
         with open(save_folder.joinpath('test_labels.pkl'), 'wb') as f:
             pickle.dump(self.all_labels, f)
-        # self.all_seqs = []
-        # for u in u2seq.keys():
-        #     for seq in u2seq[u]:
-        #         self.all_seqs += [seq]
-                    
-        # self.all_cands = []
-        # for u in u2cand.keys():
-        #     for cand in u2cand[u]:
-        #         self.all_cands += [cand]
     
     def __len__(self):
         return len(self.all_seqs)
@@ -358,7 +315,5 @@ class LLMTestDataset(data_utils.Dataset):
         
         seq = seq[-self.max_len:]
         candidates = self.all_cands[index]
-        # assert answer in candidates
-        # self.rng.shuffle(candidates)
 
         return seq_to_token_ids(self.args, seq, candidates, answer, self.text_dict, self.tokenizer, self.prompter, eval=True)
