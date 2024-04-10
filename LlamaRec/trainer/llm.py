@@ -93,10 +93,10 @@ class LLMTrainer(Trainer):
             prefix='',
             post_log_softmax=False,
             classes=list(range(args.llm_negative_sample_size+1)),
-            label_words={i: chr(ord('A')+i) for i in range(args.llm_negative_sample_size+1)},
+            label_words={i: chr(ord(char_class)) for i, char_class in enumerate(args.class_list)}
         )
         
-        wandb_run_name = f'LlamaRec_{args.dataset_code}{args.category.replace(" & ", "_")}_{args.signal}'
+        wandb_run_name = f'LlamaRec_{args.dataset_code}{args.category.replace(" & ", "_")}_{args.signal}{args.test}'
         if args.summary:
             wandb_run_name = wandb_run_name + '_summary'
 
@@ -111,7 +111,8 @@ class LLMTrainer(Trainer):
             optim="paged_adamw_32bit",
             evaluation_strategy="steps",
             save_strategy="steps",
-            eval_steps=args.lora_val_iterations,
+            # eval_steps=args.lora_val_iterations,
+            eval_steps=1,
             save_steps=args.lora_val_iterations,
             output_dir=export_root,
             save_total_limit=1,

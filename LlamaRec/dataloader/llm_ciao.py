@@ -9,7 +9,7 @@ import torch.utils.data as data_utils
 import os
 import pickle
 import transformers
-from transformers import AutoTokenizer
+from transformers import LlamaTokenizer
 from transformers.models.llama.tokenization_llama import DEFAULT_SYSTEM_PROMPT
 from trainer import absolute_recall_mrr_ndcg_for_ks
 
@@ -65,13 +65,11 @@ def seq_to_token_ids(args, seq, candidates, label, text_dict, tokenizer, prompte
 
     seq_t = ' \n '.join(['(' + str(idx + 1) + ') ' + truncate_title(text_dict[item]) 
                     for idx, item in enumerate(seq)])
-    can_t = ' \n '.join(['(' + chr(ord('A') + idx) + ') ' + truncate_title(text_dict[item])
-                    for idx, item in enumerate(candidates)])
-    try:
-        output = chr(ord('A') + candidates.index(label))  # ranking only
-    except:
-        label = random.choice(candidates)
-        output = chr(ord('A') + candidates.index(label))
+    can_t = ' \n '.join(['(' + chr(ord(char_class)) + ') ' + truncate_title(text_dict[item])
+                    for item, char_class in zip(candidates, args.class_list)])
+
+    char_label = args.class_list[candidates.index(random.choice(candidates))]
+    output = chr(ord(char_label))
     
     if args.signal == 'like':
         prompt_signal = 'liked'
@@ -120,7 +118,7 @@ class LLMDataloader():
         args.num_items = self.item_count
         self.max_len = args.llm_max_history
         
-        self.tokenizer = AutoTokenizer.from_pretrained(
+        self.tokenizer = LlamaTokenizer.from_pretrained(
             args.llm_base_tokenizer, cache_dir=args.llm_cache_dir)
         self.tokenizer.pad_token = self.tokenizer.unk_token
         self.tokenizer.padding_side = 'left'
@@ -226,8 +224,11 @@ class LLMValidDataset(data_utils.Dataset):
         self.all_seqs = []
         self.all_cands = []
         self.all_labels = []
-        for u in u2seq.keys():
+        for u in list(u2seq.keys())[:100]:
             for seq, cand, labels in zip(u2seq[u], u2cand[u], u2labels[u]):
+                if len(cand) > 50:
+                    continue
+                
                 self.rng.shuffle(cand)
                 self.all_labels.append([labels[i] for i in cand])
                 
@@ -246,7 +247,7 @@ class LLMValidDataset(data_utils.Dataset):
                 else:
                     for i in range(0, len(cand), args.llm_negative_sample_size+1):
                         self.all_seqs += [seq]
-                        batch = cand[i:i+args.llm_negative_sample_size]
+                        batch = cand[i:i+args.llm_negative_sample_size+1]
                         self.all_cands += [batch]
         
         with open(save_folder.joinpath('valid_labels.pkl'), 'wb') as f:
@@ -281,6 +282,9 @@ class LLMTestDataset(data_utils.Dataset):
         self.all_labels = []
         for u in u2seq.keys():
             for seq, cand, labels in zip(u2seq[u], u2cand[u], u2labels[u]):
+                if len(cand) > 50:
+                    continue
+
                 self.rng.shuffle(cand)
                 self.all_labels.append([labels[i] for i in cand])
                 
@@ -300,7 +304,7 @@ class LLMTestDataset(data_utils.Dataset):
                 else:
                     for i in range(0, len(cand), args.llm_negative_sample_size+1):
                         self.all_seqs += [seq]
-                        batch = cand[i:i+args.llm_negative_sample_size]
+                        batch = cand[i:i+args.llm_negative_sample_size+1]
                         self.all_cands += [batch]
         
         with open(save_folder.joinpath('test_labels.pkl'), 'wb') as f:

@@ -34,7 +34,7 @@ def main(args, export_root=None):
         if args.summary:
             export_root = os.path.join(EXPERIMENT_ROOT, f'{args.dataset_code}{args.category.replace(" & ", "_")}_{args.signal}_summary')
         else:
-            export_root = os.path.join(EXPERIMENT_ROOT, f'{args.dataset_code}{args.category.replace(" & ", "_")}_{args.signal}')
+            export_root = os.path.join(EXPERIMENT_ROOT, f'{args.dataset_code}{args.category.replace(" & ", "_")}_{args.signal}{args.test}')
         args.export_root = export_root
 
     train_loader, val_loader, test_loader, tokenizer = dataloader_factory(args)

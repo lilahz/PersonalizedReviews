@@ -2,51 +2,30 @@ import numpy as np
 import random
 import torch
 import argparse
+import string
 
 
 RAW_DATASET_ROOT_FOLDER = '/sise/bshapira-group/lilachzi/models/LlamaRec/data'
-EXPERIMENT_ROOT = '/sise/bshapira-group/lilachzi/models/LlamaRec/experiments/random_full'
+EXPERIMENT_ROOT = '/sise/bshapira-group/lilachzi/models/LlamaRec/experiments/'
 STATE_DICT_KEY = 'model_state_dict'
 OPTIMIZER_STATE_DICT_KEY = 'optimizer_state_dict'
 PROJECT_NAME = 'llmrec'
 
 
 def set_template(args):
-    if args.dataset_code == None:
-        print('******************** Dataset Selection ********************')
-        # dataset_code = {'1': 'ml-100k', 'b': 'beauty', 'g': 'games', 'cg': 'ciao_Games', 'cb': 'ciao_Beauty'}
-        dataset_code = {'1': 'ml-100k', 'b': 'beauty', 'g': 'games', 'c': 'ciao'}
-        args.dataset_code = dataset_code[input('Input 1 for ml-100k, b for beauty and g for games: ')]
-        
     print(f'DEBUG: {args.dataset_code}{args.category} - {args.signal}')
+    args.test = '_local_test2'
+    print(f'DEBUG: {args.test}')
 
-    if args.dataset_code == 'ml-100k':
-        args.bert_max_len = 200
-    else:
-        # args.bert_max_len = 50
-        args.bert_max_len = 30
-
-    if 'llm' in args.model_code: 
-        batch = 16 if args.dataset_code == 'ml-100k' else 12
-        # batch = 8 if 'ciao' in args.dataset_code else batch
-        # batch = 2
-        args.lora_micro_batch_size = batch
-    else: 
-        batch = 16 if args.dataset_code == 'ml-100k' else 64
+    # batch = 8
+    batch = 2
+    args.lora_micro_batch_size = batch
 
     args.train_batch_size = batch
     args.val_batch_size = batch
     args.test_batch_size = batch
     
-    if args.signal == 'like':
-        args.llm_max_history = 30
-    elif args.signal == 'write':
-        args.llm_max_history = 15
-    elif args.signal == 'both':
-        args.llm_max_history = 40
-    # args.llm_max_history = 20 if args.signal in ['like', 'write'] else 30
-    if args.summary:
-        args.llm_max_history = 10 if args.signal in ['like', 'write'] else 25
+    args.llm_max_history = 10
 
     if torch.cuda.is_available(): args.device = 'cuda'
     else: args.device = 'cpu'
@@ -67,6 +46,9 @@ def set_template(args):
     args.bert_num_blocks = 2
     args.bert_num_heads = 2
     args.bert_head_size = None
+    
+    args.class_list = list(string.ascii_uppercase) + list(string.ascii_lowercase)
+    args.class_list = args.class_list[:(args.llm_negative_sample_size + 1)]
 
 
 parser = argparse.ArgumentParser()
@@ -147,13 +129,11 @@ parser.add_argument('--bert_mask_prob', type=float, default=0.25)
 ################
 parser.add_argument('--llm_base_model', type=str, default='meta-llama/Llama-2-7b-hf')
 parser.add_argument('--llm_base_tokenizer', type=str, default='meta-llama/Llama-2-7b-hf')
-parser.add_argument('--llm_max_title_len', type=int, default=32)
-# parser.add_argument('--llm_max_text_len', type=int, default=1536)
+parser.add_argument('--llm_max_title_len', type=int, default=50)
 parser.add_argument('--llm_max_text_len', type=int, default=2500)
 parser.add_argument('--llm_max_history', type=int, default=20)
 parser.add_argument('--llm_train_on_inputs', type=bool, default=False)
 parser.add_argument('--llm_negative_sample_size', type=int, default=19)  # 19 negative & 1 positive
-# parser.add_argument('--llm_negative_sample_size', type=int, default=9)  # 9 negative & 1 positive
 parser.add_argument('--llm_system_template', type=str,  # instruction
     default="Given user history of reviews they previously {}, recommend an item from the candidate pool with its index letter.")
 parser.add_argument('--llm_input_template', type=str, \
@@ -165,8 +145,8 @@ parser.add_argument('--llm_cache_dir', type=str, default=None)
 ################
 # Lora
 ################
-parser.add_argument('--lora_r', type=int, default=64)
-parser.add_argument('--lora_alpha', type=int, default=256)
+parser.add_argument('--lora_r', type=int, default=8)
+parser.add_argument('--lora_alpha', type=int, default=64)
 parser.add_argument('--lora_dropout', type=float, default=0.05)
 parser.add_argument('--lora_target_modules', type=list, default=['q_proj', 'v_proj'])
 parser.add_argument('--lora_num_epochs', type=int, default=1)
