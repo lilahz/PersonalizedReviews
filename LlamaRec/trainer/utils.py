@@ -98,6 +98,10 @@ def get_real_labels(model_scores, mode):
             
         batches = len([i for i in range(0, len(labels) - 1, batch_size - 1)])
         scores = model_scores[i:i+batches]
+        # normalize score batches
+        if len(batches) > 1:
+            scores = scores / scores.sum()
+            
         i += batches
         
         scores = scores.flatten()

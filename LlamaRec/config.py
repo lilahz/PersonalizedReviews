@@ -14,7 +14,7 @@ PROJECT_NAME = 'llmrec'
 
 def set_template(args):
     print(f'DEBUG: {args.dataset_code}{args.category} - {args.signal}')
-    args.test = '_local_test2'
+    args.test = '_test5'
     print(f'DEBUG: {args.test}')
 
     # batch = 8
@@ -99,16 +99,13 @@ parser.add_argument('--warmup_steps', type=int, default=10)
 
 # evaluation #
 parser.add_argument('--val_strategy', type=str, default='iteration', choices=['epoch', 'iteration'])
-# parser.add_argument('--val_iterations', type=int, default=500)  # only for iteration val_strategy
 parser.add_argument('--val_iterations', type=int, default=20)  # only for iteration val_strategy
 parser.add_argument('--early_stopping', type=bool, default=True)
-# parser.add_argument('--early_stopping_patience', type=int, default=20)
 parser.add_argument('--early_stopping_patience', type=int, default=2)
 parser.add_argument('--metric_ks', nargs='+', type=int, default=[1, 3, 5])
 parser.add_argument('--rerank_metric_ks', nargs='+', type=int, default=[1, 3, 5])
 parser.add_argument('--best_metric', type=str, default='Recall@5')
 parser.add_argument('--rerank_best_metric', type=str, default='nDCG@5')
-# parser.add_argument('--use_wandb', type=bool, default=False)
 parser.add_argument('--use_wandb', type=bool, default=True)
 
 ################
@@ -133,7 +130,7 @@ parser.add_argument('--llm_max_title_len', type=int, default=50)
 parser.add_argument('--llm_max_text_len', type=int, default=2500)
 parser.add_argument('--llm_max_history', type=int, default=20)
 parser.add_argument('--llm_train_on_inputs', type=bool, default=False)
-parser.add_argument('--llm_negative_sample_size', type=int, default=19)  # 19 negative & 1 positive
+parser.add_argument('--llm_negative_sample_size', type=int, default=9)  # 19 negative & 1 positive
 parser.add_argument('--llm_system_template', type=str,  # instruction
     default="Given user history of reviews they previously {}, recommend an item from the candidate pool with its index letter.")
 parser.add_argument('--llm_input_template', type=str, \

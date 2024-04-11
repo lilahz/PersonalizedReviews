@@ -68,7 +68,10 @@ def seq_to_token_ids(args, seq, candidates, label, text_dict, tokenizer, prompte
     can_t = ' \n '.join(['(' + chr(ord(char_class)) + ') ' + truncate_title(text_dict[item])
                     for item, char_class in zip(candidates, args.class_list)])
 
-    char_label = args.class_list[candidates.index(random.choice(candidates))]
+    try:
+        char_label = args.class_list[candidates.index(label)]
+    except:
+        char_label = args.class_list[candidates.index(random.choice(candidates))]
     output = chr(ord(char_label))
     
     if args.signal == 'like':
@@ -224,7 +227,7 @@ class LLMValidDataset(data_utils.Dataset):
         self.all_seqs = []
         self.all_cands = []
         self.all_labels = []
-        for u in list(u2seq.keys())[:100]:
+        for u in list(u2seq.keys()):
             for seq, cand, labels in zip(u2seq[u], u2cand[u], u2labels[u]):
                 if len(cand) > 50:
                     continue
