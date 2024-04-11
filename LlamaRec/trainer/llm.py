@@ -27,6 +27,7 @@ def llama_collate_fn_w_truncation(llm_max_length, eval=False):
         all_labels = []
         example_max_length = max([len(batch[idx]['input_ids']) for idx in range(len(batch))])
         max_length = min(llm_max_length, example_max_length)
+        labels_max_length = max([len(batch[idx]['labels']) for idx in range(len(batch))])
         
         for i in range(len(batch)):
             input_ids = batch[i]['input_ids']
@@ -41,11 +42,13 @@ def llama_collate_fn_w_truncation(llm_max_length, eval=False):
                 input_ids = [0] * padding_length + input_ids
                 attention_mask = [0] * padding_length + attention_mask
                 if not eval: labels = [-100] * padding_length + labels
+                
+            padding_length = labels_max_length - len(labels)
+            labels = [-100] * padding_length + labels
 
             if eval: assert input_ids[-1] == 13
             else:
-                assert input_ids[-3] == 13 and input_ids[-1] == 2
-                assert labels[-3] == -100 and labels[-2] != -100
+                assert input_ids[-1] == 2
             
             all_input_ids.append(torch.tensor(input_ids).long())
             all_attention_mask.append(torch.tensor(attention_mask).long())
@@ -112,7 +115,6 @@ class LLMTrainer(Trainer):
             evaluation_strategy="steps",
             save_strategy="steps",
             eval_steps=args.lora_val_iterations,
-            # eval_steps=1,
             save_steps=args.lora_val_iterations,
             output_dir=export_root,
             save_total_limit=1,

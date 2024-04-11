@@ -28,7 +28,7 @@ def generate_and_tokenize_eval(args, data_point, tokenizer, prompter):
                                       max_length=args.llm_max_text_len,
                                       padding=False,
                                       return_tensors=None)
-    tokenized_full_prompt["labels"] = ord(data_point["output"]) - ord('A')
+    tokenized_full_prompt["labels"] = [ord(o) - ord('A') for o in data_point["output"].split(',')]
     
     return tokenized_full_prompt
 
@@ -57,7 +57,7 @@ def generate_and_tokenize_train(args, data_point, tokenizer, prompter):
     return tokenized_full_prompt
 
 
-def seq_to_token_ids(args, seq, candidates, label, text_dict, tokenizer, prompter, eval=False):
+def seq_to_token_ids(args, seq, candidates, labels, text_dict, tokenizer, prompter, eval=False):
     def truncate_title(title):
         title_ = tokenizer.tokenize(title)[:args.llm_max_title_len]
         title = tokenizer.convert_tokens_to_string(title_)
@@ -68,11 +68,17 @@ def seq_to_token_ids(args, seq, candidates, label, text_dict, tokenizer, prompte
     can_t = ' \n '.join(['(' + chr(ord(char_class)) + ') ' + truncate_title(text_dict[item])
                     for item, char_class in zip(candidates, args.class_list)])
 
-    try:
-        char_label = args.class_list[candidates.index(label)]
-    except:
-        char_label = args.class_list[candidates.index(random.choice(candidates))]
-    output = chr(ord(char_label))
+    char_labels = []
+    for label in labels:
+        try:
+            char_labels.append(args.class_list[candidates.index(label)])
+        except:
+            continue
+
+    if not char_labels:
+        char_labels.append(args.class_list[candidates.index(random.choice(candidates))])
+            
+    output = ','.join([chr(ord(char_label)) for char_label in char_labels])
     
     if args.signal == 'like':
         prompt_signal = 'liked'
@@ -106,6 +112,7 @@ class LLMDataloader():
         seq_dataset = dataset.load_dataset()
         self.train_seq = seq_dataset['train_seq']
         self.train_cand = seq_dataset['train_cand']
+        self.train_labels = seq_dataset['train_labels']
         self.val_seq = seq_dataset['val_seq']
         self.val_cand = seq_dataset['val_cand']
         self.val_labels = seq_dataset['val_labels']
@@ -148,7 +155,7 @@ class LLMDataloader():
         return dataloader
 
     def _get_train_dataset(self):
-        dataset = LLMTrainDataset(self.args, self.train_seq, self.train_cand, self.max_len, self.rng,
+        dataset = LLMTrainDataset(self.args, self.train_seq, self.train_cand, self.train_labels, self.max_len, self.rng,
                                   self.text_dict, self.tokenizer, self.prompter)
         return dataset
 
@@ -176,48 +183,63 @@ class LLMDataloader():
 
 
 class LLMTrainDataset(data_utils.Dataset):
-    def __init__(self, args, u2seq, u2cand, max_len, rng, text_dict, tokenizer, prompter):
+    def __init__(self, args, u2seq, u2cand, u2labels, max_len, rng, text_dict, tokenizer, prompter):
         self.args = args
         self.max_len = max_len
-        self.num_items = args.num_items
         self.rng = rng
         self.text_dict = text_dict
         self.tokenizer = tokenizer
         self.prompter = prompter
 
         self.all_seqs = []
+        self.all_answers = []
         self.all_cands = []
-        for u in u2seq.keys():
-            for seq, cand in zip(u2seq[u], u2cand[u]):
-                self.all_seqs += [seq]
-                self.all_cands += [cand]
+        self.all_labels = []
+        for u in list(u2seq.keys())[:100]:
+            for seq, cand, labels in zip(u2seq[u], u2cand[u], u2labels[u]):
+                if len(cand) > 50:
+                    continue
+                
+                self.rng.shuffle(cand)
+                self.all_labels.append([labels[i] for i in cand])
+                    
+                if len(cand) <= self.args.llm_negative_sample_size + 1:
+                    self.all_seqs += [seq]
+                    self.all_cands += [cand]
+                    self.all_answers.append([c for c in cand if labels[c] >= 3])
+                else:
+                    for i in range(0, len(cand), args.llm_negative_sample_size+1):
+                        self.all_seqs += [seq]
+                        batch = cand[i:i+args.llm_negative_sample_size+1]
+                        self.all_cands += [batch]
+                        self.all_answers.append([b for b in batch if labels[b] >= 3])
 
     def __len__(self):
         return len(self.all_seqs)
 
     def __getitem__(self, index):
         tokens = self.all_seqs[index]
-        answer = tokens[-1]
+        answers = self.all_answers[index]
         original_seq = tokens[:-1]
         
         seq = original_seq[-self.max_len:]
-        cur_idx, candidates = 0, [answer]
+        cur_idx, candidates = 0, answers
         samples = self.all_cands[index]
         while len(candidates) < self.args.llm_negative_sample_size + 1 and cur_idx < len(samples):
             item = samples[cur_idx]
             cur_idx += 1
-            if item in original_seq or item == answer: continue
+            if item in original_seq or item in answers: continue
             else: candidates.append(item)
         self.rng.shuffle(candidates)
+        answers = [a for a in answers if a in candidates]
 
-        return seq_to_token_ids(self.args, seq, candidates, answer, self.text_dict, \
+        return seq_to_token_ids(self.args, seq, candidates, answers, self.text_dict, \
                                 self.tokenizer, self.prompter, eval=False)
 
 
 class LLMValidDataset(data_utils.Dataset):
     def __init__(self, args, u2seq, u2cand, u2labels, max_len, rng, text_dict, tokenizer, prompter, save_folder):
         self.args = args
-        self.users = sorted(u2seq.keys())
         self.max_len = max_len
         self.rng = rng
         self.text_dict = text_dict
@@ -225,6 +247,7 @@ class LLMValidDataset(data_utils.Dataset):
         self.prompter = prompter
         
         self.all_seqs = []
+        self.all_answers = []
         self.all_cands = []
         self.all_labels = []
         for u in list(u2seq.keys()):
@@ -234,24 +257,17 @@ class LLMValidDataset(data_utils.Dataset):
                 
                 self.rng.shuffle(cand)
                 self.all_labels.append([labels[i] for i in cand])
-                
-                # try window sliding
-                # if len(cand) <= self.args.llm_negative_sample_size + 1:
-                #     self.all_seqs += [seq]
-                #     self.all_cands += [cand]
-                # else:
-                #     for i in range(0, len(cand)- args.sliding_window_size + 1, args.sliding_window_step):
-                #         self.all_seqs += [seq]
-                #         self.all_cands += [cand[i:i+args.sliding_window_size]]
                     
                 if len(cand) <= self.args.llm_negative_sample_size + 1:
                     self.all_seqs += [seq]
                     self.all_cands += [cand]
+                    self.all_answers.append([c for c in cand if labels[c] >= 3])
                 else:
                     for i in range(0, len(cand), args.llm_negative_sample_size+1):
                         self.all_seqs += [seq]
                         batch = cand[i:i+args.llm_negative_sample_size+1]
                         self.all_cands += [batch]
+                        self.all_answers.append([b for b in batch if labels[b] >= 3])
         
         with open(save_folder.joinpath('valid_labels.pkl'), 'wb') as f:
             pickle.dump(self.all_labels, f)
@@ -261,12 +277,12 @@ class LLMValidDataset(data_utils.Dataset):
 
     def __getitem__(self, index):
         seq = self.all_seqs[index]
-        answer = seq[-1]
+        answers = self.all_answers[index]
         
         seq = seq[-self.max_len:]
         candidates = self.all_cands[index]
         
-        return seq_to_token_ids(self.args, seq, candidates, answer, self.text_dict, self.tokenizer, self.prompter, eval=True)
+        return seq_to_token_ids(self.args, seq, candidates, answers, self.text_dict, self.tokenizer, self.prompter, eval=True)
 
 
 class LLMTestDataset(data_utils.Dataset):
@@ -281,6 +297,7 @@ class LLMTestDataset(data_utils.Dataset):
         self.prompter = prompter
         
         self.all_seqs = []
+        self.all_answers = []
         self.all_cands = []
         self.all_labels = []
         for u in u2seq.keys():
@@ -290,25 +307,17 @@ class LLMTestDataset(data_utils.Dataset):
 
                 self.rng.shuffle(cand)
                 self.all_labels.append([labels[i] for i in cand])
-                
-                # try window sliding
-                # if len(cand) <= self.args.llm_negative_sample_size + 1:
-                #     self.all_seqs += [seq]
-                #     # self.rng.shuffle(cand)
-                #     self.all_cands += [cand]
-                # else:
-                #     for i in range(0, len(cand)- args.sliding_window_size + 1, args.sliding_window_step):
-                #         self.all_seqs += [seq]
-                #         self.all_cands += [cand[i:i+args.sliding_window_size]]
-                    
-                if len(cand) <= 20:
+
+                if len(cand) <= self.args.llm_negative_sample_size + 1:
                     self.all_seqs += [seq]
                     self.all_cands += [cand]
+                    self.all_answers.append([c for c in cand if labels[c] >= 3])
                 else:
                     for i in range(0, len(cand), args.llm_negative_sample_size+1):
                         self.all_seqs += [seq]
                         batch = cand[i:i+args.llm_negative_sample_size+1]
                         self.all_cands += [batch]
+                        self.all_answers.append([b for b in batch if labels[b] >= 3])
         
         with open(save_folder.joinpath('test_labels.pkl'), 'wb') as f:
             pickle.dump(self.all_labels, f)
@@ -318,9 +327,9 @@ class LLMTestDataset(data_utils.Dataset):
     
     def __getitem__(self, index):
         seq = self.all_seqs[index]
-        answer = seq[-1]
+        answers = self.all_answers[index]
         
         seq = seq[-self.max_len:]
         candidates = self.all_cands[index]
 
-        return seq_to_token_ids(self.args, seq, candidates, answer, self.text_dict, self.tokenizer, self.prompter, eval=True)
+        return seq_to_token_ids(self.args, seq, candidates, answers, self.text_dict, self.tokenizer, self.prompter, eval=True)
