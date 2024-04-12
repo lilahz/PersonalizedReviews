@@ -14,7 +14,7 @@ PROJECT_NAME = 'llmrec'
 
 def set_template(args):
     print(f'DEBUG: {args.dataset_code}{args.category} - {args.signal}')
-    args.test = '_test7'
+    args.test = '_test8'
     print(f'DEBUG: {args.test}')
 
     batch = 8
@@ -73,7 +73,6 @@ parser.add_argument('--train_batch_size', type=int, default=64)
 parser.add_argument('--val_batch_size', type=int, default=64)
 parser.add_argument('--test_batch_size', type=int, default=64)
 parser.add_argument('--num_workers', type=int, default=8)
-# parser.add_argument('--sliding_window_size', type=float, default=1.0)
 parser.add_argument('--sliding_window_size', type=int, default=10)
 parser.add_argument('--sliding_window_step', type=int, default=5)
 parser.add_argument('--negative_sample_size', type=int, default=10)
@@ -149,7 +148,7 @@ parser.add_argument('--lora_target_modules', type=list, default=['q_proj', 'v_pr
 parser.add_argument('--lora_num_epochs', type=int, default=1)
 parser.add_argument('--lora_val_iterations', type=int, default=20)
 parser.add_argument('--lora_early_stopping_patience', type=int, default=2)
-parser.add_argument('--lora_lr', type=float, default=1e-4)
+parser.add_argument('--lora_lr', type=float, default=1e-3)
 parser.add_argument('--lora_micro_batch_size', type=int, default=16)
 
 ################

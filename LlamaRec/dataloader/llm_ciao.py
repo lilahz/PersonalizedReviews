@@ -52,7 +52,8 @@ def generate_and_tokenize_train(args, data_point, tokenizer, prompter):
                                            data_point["output"])
     tokenized_full_prompt = tokenize(full_prompt, add_eos_token=True)
     if not args.llm_train_on_inputs:
-        tokenized_full_prompt["labels"][:-2] = [-100] * len(tokenized_full_prompt["labels"][:-2])
+        response_len = len(data_point['output']) + 1
+        tokenized_full_prompt["labels"][:-response_len] = [-100] * len(tokenized_full_prompt["labels"][:-response_len])
     
     return tokenized_full_prompt
 
@@ -276,7 +277,7 @@ class LLMValidDataset(data_utils.Dataset):
         return len(self.all_seqs)
 
     def __getitem__(self, index):
-        seq = self.all_seqs[index]
+        seq = self.all_seqs[index][:-1]
         answers = self.all_answers[index]
         
         seq = seq[-self.max_len:]
@@ -326,7 +327,7 @@ class LLMTestDataset(data_utils.Dataset):
         return len(self.all_seqs)
     
     def __getitem__(self, index):
-        seq = self.all_seqs[index]
+        seq = self.all_seqs[index][:-1]
         answers = self.all_answers[index]
         
         seq = seq[-self.max_len:]
