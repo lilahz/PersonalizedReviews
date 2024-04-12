@@ -195,7 +195,7 @@ class LLMTrainDataset(data_utils.Dataset):
         self.all_answers = []
         self.all_cands = []
         self.all_labels = []
-        for u in list(u2seq.keys())[:100]:
+        for u in list(u2seq.keys()):
             for seq, cand, labels in zip(u2seq[u], u2cand[u], u2labels[u]):
                 if len(cand) > 50:
                     continue
@@ -305,7 +305,7 @@ class LLMTestDataset(data_utils.Dataset):
                 if len(cand) > 50:
                     continue
 
-                self.rng.shuffle(cand)
+                # self.rng.shuffle(cand)
                 self.all_labels.append([labels[i] for i in cand])
 
                 if len(cand) <= self.args.llm_negative_sample_size + 1:

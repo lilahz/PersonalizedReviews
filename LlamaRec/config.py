@@ -14,11 +14,11 @@ PROJECT_NAME = 'llmrec'
 
 def set_template(args):
     print(f'DEBUG: {args.dataset_code}{args.category} - {args.signal}')
-    args.test = '_test6'
+    args.test = '_test7'
     print(f'DEBUG: {args.test}')
 
-    # batch = 8
-    batch = 2
+    batch = 8
+    # batch = 2
     args.lora_micro_batch_size = batch
 
     args.train_batch_size = batch
