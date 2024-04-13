@@ -5,6 +5,7 @@ import argparse
 import string
 
 
+CSVS_FOLDER = '/sise/bshapira-group/lilachzi/csvs'
 RAW_DATASET_ROOT_FOLDER = '/sise/bshapira-group/lilachzi/models/LlamaRec/data'
 EXPERIMENT_ROOT = '/sise/bshapira-group/lilachzi/models/LlamaRec/experiments/'
 STATE_DICT_KEY = 'model_state_dict'
@@ -14,10 +15,10 @@ PROJECT_NAME = 'llmrec'
 
 def set_template(args):
     print(f'DEBUG: {args.dataset_code}{args.category} - {args.signal}')
-    args.test = ''
+    args.test = '_classification'
     print(f'DEBUG: {args.test}')
 
-    batch = 8
+    batch = 16
     args.lora_micro_batch_size = batch
 
     args.train_batch_size = batch
@@ -46,8 +47,7 @@ def set_template(args):
     args.bert_num_heads = 2
     args.bert_head_size = None
     
-    args.class_list = list(string.ascii_uppercase) + list(string.ascii_lowercase)
-    args.class_list = args.class_list[:(args.llm_negative_sample_size + 1)]
+    args.class_list = ['Yes', 'No']
 
 
 parser = argparse.ArgumentParser()
@@ -127,11 +127,11 @@ parser.add_argument('--llm_max_title_len', type=int, default=50)
 parser.add_argument('--llm_max_text_len', type=int, default=2500)
 parser.add_argument('--llm_max_history', type=int, default=20)
 parser.add_argument('--llm_train_on_inputs', type=bool, default=False)
-parser.add_argument('--llm_negative_sample_size', type=int, default=9)  # 19 negative & 1 positive
+parser.add_argument('--llm_classes', type=int, default=2)
 parser.add_argument('--llm_system_template', type=str,  # instruction
-    default="Given user history of reviews they previously {}, recommend the reviews the user will like the most from the candidate pool using the reviews index letters.")
+    default="Given user history of reviews they previously {}, decide whether the user will like the candidate review by answering Yes or No.")
 parser.add_argument('--llm_input_template', type=str, \
-    default='User {} history: {}; \n Candidate pool: {}')
+    default='User {} history: {}; \n Candidate review: {}')
 parser.add_argument('--llm_load_in_4bit', type=bool, default=True)
 parser.add_argument('--llm_retrieved_path', type=str, default=None)
 parser.add_argument('--llm_cache_dir', type=str, default=None)

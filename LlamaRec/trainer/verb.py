@@ -449,6 +449,10 @@ class ManualVerbalizer(Verbalizer):
             ids_per_label = []
             for word in words_per_label:
                 ids = self.tokenizer.encode(word, add_special_tokens=False)
+                # handle the case where the label is a number, 
+                # in that case the tokenizer is adding an extra space before
+                if len(ids) > 1:
+                    ids = [ids[-1]]
                 ids_per_label.append(ids)
             all_ids.append(ids_per_label)
 

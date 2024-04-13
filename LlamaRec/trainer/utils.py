@@ -74,53 +74,26 @@ def calculate_sliding_window_scores(scores):
 
 def get_real_labels(model_scores, mode):
     mode = 'valid' if mode == 'eval' else 'test'
-    eval_labels = os.path.join(RAW_DATASET_ROOT_FOLDER, 'preprocessed', 
-                               f'{args.dataset_code}_{args.category.replace(" & ", "_")}_{args.signal}', f'{mode}_labels.pkl')
-    with open(eval_labels, 'rb') as f:
-        real_labels = pickle.load(f)
-    real_labels = real_labels[:len(model_scores)]
+    eval_df_path = os.path.join(CSVS_FOLDER, f'{mode}_set.csv')
+    eval_df = pd.read_csv(eval_df_path, converters={'y_true': eval})
+    eval_df = eval_df[eval_df['category'] == args.category]
+    eval_df['votes'] = eval_df['y_true'].apply(lambda d: [(k,v) for k,v in d.items()])
+    eval_df = eval_df.explode('votes')
+    eval_df['review_id'] = eval_df['votes'].apply(lambda l: l[0])
+    eval_df['vote'] = eval_df['votes'].apply(lambda l: l[1])
+    eval_df.drop(columns=['y_true', 'votes'], inplace=True)
     
-    ranks = []
-    ranked_labels = []
-    batch_size = model_scores.size(1)
-    i = 0
-    for labels in real_labels:
-        labels = torch.tensor(labels)
-        
-        # try window slide
-        # if len(labels) <= args.llm_negative_sample_size + 1:
-        #     scores = model_scores[i]
-        #     i += 1
-        # else:
-        #     num_windows = len(range(0, len(labels) - args.sliding_window_size + 1, args.sliding_window_step))
-        #     scores = calculate_sliding_window_scores(model_scores[i:i+num_windows, :args.sliding_window_size])
-        #     i += num_windows
-            
-        batches = len([i for i in range(0, len(labels) - 1, batch_size - 1)])
-        scores = model_scores[i:i+batches]
-        # normalize score batches
-        if batches > 1:
-            scores = scores / scores.sum()
-            
-        i += batches
-        
-        scores = scores.flatten()
-        rank = (-scores).argsort(dim=-1)
-        if len(rank) > len(labels):
-            mask = rank < len(labels)
-            rank = torch.where(mask, rank, -1)
-            
-        result = torch.index_select(labels, 0, rank[rank>=0]).tolist()
-        ranked_labels.append(str(result))
-        ranks.append(str(rank.tolist()))
-        
-    return ranked_labels, ranks
+    eval_df = eval_df[:len(model_scores)]
+    eval_df['prediction'] = model_scores[:, 0].tolist()
+    
+    eval_df = eval_df.sort_values(['product_id', 'voter_id', 'prediction'], ascending=[0, 0, 0]).groupby(
+        ['product_id', 'voter_id'], as_index=False).agg({'review_id': list, 'vote': list, 'prediction': list}).rename(
+            columns={'vote': 'y'})
+    
+    return eval_df
 
 def absolute_recall_mrr_ndcg_for_ks(scores, labels, ks, mode):
-    real_labels, rank = get_real_labels(scores, mode)
-    eval_df = pd.DataFrame(real_labels, columns=['y'])
-    eval_df['rank'] = rank
-    eval_df['y'] = eval_df['y'].apply(eval)
+    eval_df = get_real_labels(scores, mode)
     
     eval_df['nDCG@5'] = eval_df.apply(lambda x: calc_ndcg(x['y'][:5]), axis=1)
     eval_df['MRR'] = eval_df.apply(lambda x: calc_mrr(x['y']), axis=1)
@@ -140,7 +113,7 @@ def absolute_recall_mrr_ndcg_for_ks(scores, labels, ks, mode):
         datetime_string = datetime.now().strftime("%Y_%m_%d_%H_%M")
         eval_df.to_csv(os.path.join(args.export_root, f'eval_predictions_{datetime_string}.csv'), index=False)
 
-    metrics = {k:v for k,v in eval_df.iloc[:, 2:].mean().items()}
+    metrics = {k:v for k,v in eval_df.iloc[:, 5:].mean().items()}
 
     return metrics
 
