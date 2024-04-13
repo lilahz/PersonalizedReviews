@@ -195,25 +195,23 @@ class LLMTrainDataset(data_utils.Dataset):
         self.all_seqs = []
         self.all_answers = []
         self.all_cands = []
-        self.all_labels = []
         for u in list(u2seq.keys()):
             for seq, cand, labels in zip(u2seq[u], u2cand[u], u2labels[u]):
                 if len(cand) > 50:
                     continue
                 
                 self.rng.shuffle(cand)
-                self.all_labels.append([labels[i] for i in cand])
                     
                 if len(cand) <= self.args.llm_negative_sample_size + 1:
                     self.all_seqs += [seq]
                     self.all_cands += [cand]
-                    self.all_answers.append([c for c in cand if labels[c] >= 3])
+                    self.all_answers.append(list(labels.keys()))
                 else:
                     for i in range(0, len(cand), args.llm_negative_sample_size+1):
                         self.all_seqs += [seq]
                         batch = cand[i:i+args.llm_negative_sample_size+1]
                         self.all_cands += [batch]
-                        self.all_answers.append([b for b in batch if labels[b] >= 3])
+                        self.all_answers.append([a for a in labels.keys() if a in batch])
 
     def __len__(self):
         return len(self.all_seqs)
@@ -251,24 +249,24 @@ class LLMValidDataset(data_utils.Dataset):
         self.all_answers = []
         self.all_cands = []
         self.all_labels = []
-        for u in list(u2seq.keys()):
+        for u in list(u2seq.keys())[:100]:
             for seq, cand, labels in zip(u2seq[u], u2cand[u], u2labels[u]):
                 if len(cand) > 50:
                     continue
-                
+
                 self.rng.shuffle(cand)
                 self.all_labels.append([labels[i] for i in cand])
                     
                 if len(cand) <= self.args.llm_negative_sample_size + 1:
                     self.all_seqs += [seq]
                     self.all_cands += [cand]
-                    self.all_answers.append([c for c in cand if labels[c] >= 3])
+                    self.all_answers.append(list(labels.keys()))
                 else:
                     for i in range(0, len(cand), args.llm_negative_sample_size+1):
                         self.all_seqs += [seq]
                         batch = cand[i:i+args.llm_negative_sample_size+1]
                         self.all_cands += [batch]
-                        self.all_answers.append([b for b in batch if labels[b] >= 3])
+                        self.all_answers.append([a for a in labels.keys() if a in batch])
         
         with open(save_folder.joinpath('valid_labels.pkl'), 'wb') as f:
             pickle.dump(self.all_labels, f)
@@ -301,24 +299,24 @@ class LLMTestDataset(data_utils.Dataset):
         self.all_answers = []
         self.all_cands = []
         self.all_labels = []
-        for u in u2seq.keys():
+        for u in list(u2seq.keys()):
             for seq, cand, labels in zip(u2seq[u], u2cand[u], u2labels[u]):
                 if len(cand) > 50:
                     continue
 
                 # self.rng.shuffle(cand)
                 self.all_labels.append([labels[i] for i in cand])
-
+                    
                 if len(cand) <= self.args.llm_negative_sample_size + 1:
                     self.all_seqs += [seq]
                     self.all_cands += [cand]
-                    self.all_answers.append([c for c in cand if labels[c] >= 3])
+                    self.all_answers.append(list(labels.keys()))
                 else:
                     for i in range(0, len(cand), args.llm_negative_sample_size+1):
                         self.all_seqs += [seq]
                         batch = cand[i:i+args.llm_negative_sample_size+1]
                         self.all_cands += [batch]
-                        self.all_answers.append([b for b in batch if labels[b] >= 3])
+                        self.all_answers.append([a for a in labels.keys() if a in batch])
         
         with open(save_folder.joinpath('test_labels.pkl'), 'wb') as f:
             pickle.dump(self.all_labels, f)

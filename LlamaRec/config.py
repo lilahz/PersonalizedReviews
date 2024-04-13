@@ -14,7 +14,7 @@ PROJECT_NAME = 'llmrec'
 
 def set_template(args):
     print(f'DEBUG: {args.dataset_code}{args.category} - {args.signal}')
-    args.test = '_test8'
+    args.test = '_test9'
     print(f'DEBUG: {args.test}')
 
     batch = 8
@@ -131,7 +131,8 @@ parser.add_argument('--llm_max_history', type=int, default=20)
 parser.add_argument('--llm_train_on_inputs', type=bool, default=False)
 parser.add_argument('--llm_negative_sample_size', type=int, default=9)  # 19 negative & 1 positive
 parser.add_argument('--llm_system_template', type=str,  # instruction
-    default="Given user history of reviews they previously {}, recommend reviews from the candidate pool using their index letter.")
+    default="Given user history of reviews they previously {}, sort the reviews in the candidate pool using their index letter,\
+            based on the probablity the user will like the reviews.")
 parser.add_argument('--llm_input_template', type=str, \
     default='User {} history: {}; \n Candidate pool: {}')
 parser.add_argument('--llm_load_in_4bit', type=bool, default=True)
