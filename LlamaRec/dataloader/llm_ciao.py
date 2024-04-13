@@ -205,13 +205,13 @@ class LLMTrainDataset(data_utils.Dataset):
                 if len(cand) <= self.args.llm_negative_sample_size + 1:
                     self.all_seqs += [seq]
                     self.all_cands += [cand]
-                    self.all_answers.append(list(labels.keys()))
+                    self.all_answers.append([c for c in cand if labels[c] >= 3])
                 else:
                     for i in range(0, len(cand), args.llm_negative_sample_size+1):
                         self.all_seqs += [seq]
                         batch = cand[i:i+args.llm_negative_sample_size+1]
                         self.all_cands += [batch]
-                        self.all_answers.append([a for a in labels.keys() if a in batch])
+                        self.all_answers.append([b for b in batch if labels[b] >= 3])
 
     def __len__(self):
         return len(self.all_seqs)
@@ -222,7 +222,7 @@ class LLMTrainDataset(data_utils.Dataset):
         original_seq = tokens[:-1]
         
         seq = original_seq[-self.max_len:]
-        cur_idx, candidates = 0, answers
+        cur_idx, candidates = 0, answers.copy()
         samples = self.all_cands[index]
         while len(candidates) < self.args.llm_negative_sample_size + 1 and cur_idx < len(samples):
             item = samples[cur_idx]
@@ -249,24 +249,21 @@ class LLMValidDataset(data_utils.Dataset):
         self.all_answers = []
         self.all_cands = []
         self.all_labels = []
-        for u in list(u2seq.keys())[:100]:
+        for u in list(u2seq.keys()):
             for seq, cand, labels in zip(u2seq[u], u2cand[u], u2labels[u]):
-                if len(cand) > 50:
-                    continue
-
                 self.rng.shuffle(cand)
                 self.all_labels.append([labels[i] for i in cand])
                     
                 if len(cand) <= self.args.llm_negative_sample_size + 1:
                     self.all_seqs += [seq]
                     self.all_cands += [cand]
-                    self.all_answers.append(list(labels.keys()))
+                    self.all_answers.append([c for c in cand if labels[c] >= 3])
                 else:
                     for i in range(0, len(cand), args.llm_negative_sample_size+1):
                         self.all_seqs += [seq]
                         batch = cand[i:i+args.llm_negative_sample_size+1]
                         self.all_cands += [batch]
-                        self.all_answers.append([a for a in labels.keys() if a in batch])
+                        self.all_answers.append([b for b in batch if labels[b] >= 3])
         
         with open(save_folder.joinpath('valid_labels.pkl'), 'wb') as f:
             pickle.dump(self.all_labels, f)
@@ -301,22 +298,19 @@ class LLMTestDataset(data_utils.Dataset):
         self.all_labels = []
         for u in list(u2seq.keys()):
             for seq, cand, labels in zip(u2seq[u], u2cand[u], u2labels[u]):
-                if len(cand) > 50:
-                    continue
-
-                # self.rng.shuffle(cand)
+                self.rng.shuffle(cand)
                 self.all_labels.append([labels[i] for i in cand])
                     
                 if len(cand) <= self.args.llm_negative_sample_size + 1:
                     self.all_seqs += [seq]
                     self.all_cands += [cand]
-                    self.all_answers.append(list(labels.keys()))
+                    self.all_answers.append([c for c in cand if labels[c] >= 3])
                 else:
                     for i in range(0, len(cand), args.llm_negative_sample_size+1):
                         self.all_seqs += [seq]
                         batch = cand[i:i+args.llm_negative_sample_size+1]
                         self.all_cands += [batch]
-                        self.all_answers.append([a for a in labels.keys() if a in batch])
+                        self.all_answers.append([b for b in batch if labels[b] >= 3])
         
         with open(save_folder.joinpath('test_labels.pkl'), 'wb') as f:
             pickle.dump(self.all_labels, f)

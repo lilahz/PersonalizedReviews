@@ -14,18 +14,17 @@ PROJECT_NAME = 'llmrec'
 
 def set_template(args):
     print(f'DEBUG: {args.dataset_code}{args.category} - {args.signal}')
-    args.test = '_test9'
+    args.test = ''
     print(f'DEBUG: {args.test}')
 
     batch = 8
-    # batch = 2
     args.lora_micro_batch_size = batch
 
     args.train_batch_size = batch
     args.val_batch_size = batch
     args.test_batch_size = batch
     
-    args.llm_max_history = 10
+    args.llm_max_history = 15
 
     if torch.cuda.is_available(): args.device = 'cuda'
     else: args.device = 'cpu'
@@ -82,7 +81,6 @@ parser.add_argument('--negative_sample_size', type=int, default=10)
 ################
 # optimization #
 parser.add_argument('--device', type=str, default='cuda', choices=['cpu', 'cuda'])
-# parser.add_argument('--num_epochs', type=int, default=500)
 parser.add_argument('--num_epochs', type=int, default=100)
 parser.add_argument('--optimizer', type=str, default='AdamW', choices=['AdamW', 'Adam'])
 parser.add_argument('--weight_decay', type=float, default=None)
@@ -131,8 +129,7 @@ parser.add_argument('--llm_max_history', type=int, default=20)
 parser.add_argument('--llm_train_on_inputs', type=bool, default=False)
 parser.add_argument('--llm_negative_sample_size', type=int, default=9)  # 19 negative & 1 positive
 parser.add_argument('--llm_system_template', type=str,  # instruction
-    default="Given user history of reviews they previously {}, sort the reviews in the candidate pool using their index letter,\
-            based on the probablity the user will like the reviews.")
+    default="Given user history of reviews they previously {}, recommend the reviews the user will like the most from the candidate pool using the reviews index letters.")
 parser.add_argument('--llm_input_template', type=str, \
     default='User {} history: {}; \n Candidate pool: {}')
 parser.add_argument('--llm_load_in_4bit', type=bool, default=True)
@@ -142,7 +139,7 @@ parser.add_argument('--llm_cache_dir', type=str, default=None)
 ################
 # Lora
 ################
-parser.add_argument('--lora_r', type=int, default=8)
+parser.add_argument('--lora_r', type=int, default=64)
 parser.add_argument('--lora_alpha', type=int, default=64)
 parser.add_argument('--lora_dropout', type=float, default=0.05)
 parser.add_argument('--lora_target_modules', type=list, default=['q_proj', 'v_proj'])
