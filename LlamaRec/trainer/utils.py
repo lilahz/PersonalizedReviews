@@ -98,6 +98,10 @@ def get_real_labels(model_scores, mode):
             
         batches = len([i for i in range(0, len(labels) - 1, batch_size - 1)])
         scores = model_scores[i:i+batches]
+        # normalize score batches
+        if batches > 1:
+            scores = scores / scores.sum()
+            
         i += batches
         
         scores = scores.flatten()
@@ -106,9 +110,9 @@ def get_real_labels(model_scores, mode):
             mask = rank < len(labels)
             rank = torch.where(mask, rank, -1)
             
-        result = torch.index_select(labels, 0, rank[rank>=0]).cpu().numpy().tolist()
+        result = torch.index_select(labels, 0, rank[rank>=0]).tolist()
         ranked_labels.append(str(result))
-        ranks.append(str(rank))
+        ranks.append(str(rank.tolist()))
         
     return ranked_labels, ranks
 
