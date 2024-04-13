@@ -15,10 +15,10 @@ PROJECT_NAME = 'llmrec'
 
 def set_template(args):
     print(f'DEBUG: {args.dataset_code}{args.category} - {args.signal}')
-    args.test = '_classification'
+    args.test = '_classification_batch_8_r_8'
     print(f'DEBUG: {args.test}')
 
-    batch = 16
+    batch = 8
     args.lora_micro_batch_size = batch
 
     args.train_batch_size = batch
@@ -139,7 +139,7 @@ parser.add_argument('--llm_cache_dir', type=str, default=None)
 ################
 # Lora
 ################
-parser.add_argument('--lora_r', type=int, default=64)
+parser.add_argument('--lora_r', type=int, default=8)
 parser.add_argument('--lora_alpha', type=int, default=64)
 parser.add_argument('--lora_dropout', type=float, default=0.05)
 parser.add_argument('--lora_target_modules', type=list, default=['q_proj', 'v_proj'])
