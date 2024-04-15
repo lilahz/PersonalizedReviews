@@ -15,9 +15,8 @@ from model import LlamaForCausalLM
 from peft import (
     LoraConfig,
     get_peft_model,
-    get_peft_model_state_dict,
     prepare_model_for_int8_training,
-    prepare_model_for_kbit_training,
+    set_peft_model_state_dict
 )
 
 
@@ -48,10 +47,9 @@ def main(args, export_root=None):
         args.llm_base_model,
         quantization_config=bnb_config,
         device_map='auto',
-        cache_dir=args.llm_cache_dir,
     )
     model.gradient_checkpointing_enable()
-    model = prepare_model_for_kbit_training(model)
+    model = prepare_model_for_int8_training(model)
     config = LoraConfig(
         r=args.lora_r,
         lora_alpha=args.lora_alpha,
@@ -61,6 +59,13 @@ def main(args, export_root=None):
         task_type="CAUSAL_LM",
     )
     model = get_peft_model(model, config)
+    
+    if args.resume_from_checkpoint:
+        checkpoint_name = os.path.join(args.resume_from_checkpoint, "adapter_model.bin")
+        print(f"Restarting from {checkpoint_name}")
+        adapters_weights = torch.load(checkpoint_name)
+        model = set_peft_model_state_dict(model, adapters_weights)
+        
     model.print_trainable_parameters()
 
     model.config.use_cache = False

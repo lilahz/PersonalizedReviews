@@ -10,7 +10,6 @@ import os
 import pickle
 import transformers
 from transformers import LlamaTokenizer
-from transformers.models.llama.tokenization_llama import DEFAULT_SYSTEM_PROMPT
 from trainer import absolute_recall_mrr_ndcg_for_ks
 
 
@@ -88,10 +87,7 @@ def seq_to_token_ids(args, seq, candidates, labels, text_dict, tokenizer, prompt
     elif args.signal == 'both':
         prompt_signal = 'liked or written'
         
-    if args.llm_system_template:
-        system_template = args.llm_system_template.format(prompt_signal)
-    else:
-        system_template = DEFAULT_SYSTEM_PROMPT
+    system_template = args.llm_system_template.format(prompt_signal)
     input_template = args.llm_input_template.format(prompt_signal, seq_t, can_t)
     
     data_point = {}
@@ -150,7 +146,7 @@ class LLMDataloader():
 
     def _get_train_loader(self):
         dataset = self._get_train_dataset()
-        dataloader = data_utils.DataLoader(dataset, batch_size=self.args.lora_micro_batch_size,
+        dataloader = data_utils.DataLoader(dataset, batch_size=self.args.train_batch_size,
                                            shuffle=True, pin_memory=True, num_workers=self.args.num_workers,
                                            worker_init_fn=worker_init_fn)
         return dataloader

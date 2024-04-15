@@ -14,7 +14,7 @@ PROJECT_NAME = 'llmrec'
 
 def set_template(args):
     print(f'DEBUG: {args.dataset_code}{args.category} - {args.signal}')
-    args.test = ''
+    args.test = '_finetune_all'
     print(f'DEBUG: {args.test}')
 
     batch = 8
@@ -135,12 +135,13 @@ parser.add_argument('--llm_input_template', type=str, \
 parser.add_argument('--llm_load_in_4bit', type=bool, default=True)
 parser.add_argument('--llm_retrieved_path', type=str, default=None)
 parser.add_argument('--llm_cache_dir', type=str, default=None)
+parser.add_argument('--resume_from_checkpoint', type=str, default='/sise/bshapira-group/lilachzi/models/pretrained_models/alpaca-lora-7B')
 
 ################
 # Lora
 ################
-parser.add_argument('--lora_r', type=int, default=64)
-parser.add_argument('--lora_alpha', type=int, default=64)
+parser.add_argument('--lora_r', type=int, default=8)
+parser.add_argument('--lora_alpha', type=int, default=16)
 parser.add_argument('--lora_dropout', type=float, default=0.05)
 parser.add_argument('--lora_target_modules', type=list, default=['q_proj', 'v_proj'])
 parser.add_argument('--lora_num_epochs', type=int, default=1)

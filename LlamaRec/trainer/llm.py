@@ -104,14 +104,15 @@ class LLMTrainer(Trainer):
             wandb_run_name = wandb_run_name + '_summary'
 
         hf_args = TrainingArguments(
-            per_device_train_batch_size=args.lora_micro_batch_size,
+            resume_from_checkpoint='/sise/bshapira-group/lilachzi/models/LlamaRec/experiments/ciaoGames_like_finetune/checkpoint-100',
+            per_device_train_batch_size=args.train_batch_size,
             gradient_accumulation_steps=args.train_batch_size//args.lora_micro_batch_size,
             warmup_steps=args.warmup_steps,
             num_train_epochs=args.lora_num_epochs,
             learning_rate=args.lora_lr,
-            bf16=True,
+            fp16=True,
             logging_steps=10,
-            optim="paged_adamw_32bit",
+            optim="adamw_torch",
             evaluation_strategy="steps",
             save_strategy="steps",
             eval_steps=args.lora_val_iterations,
