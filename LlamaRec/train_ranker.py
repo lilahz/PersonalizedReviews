@@ -16,7 +16,6 @@ from peft import (
     LoraConfig,
     get_peft_model,
     get_peft_model_state_dict,
-    prepare_model_for_int8_training,
     prepare_model_for_kbit_training,
 )
 
@@ -57,8 +56,7 @@ def main(args, export_root=None):
         lora_alpha=args.lora_alpha,
         target_modules=args.lora_target_modules,
         lora_dropout=args.lora_dropout,
-        bias='none',
-        task_type="CAUSAL_LM",
+        bias='none'
     )
     model = get_peft_model(model, config)
     model.print_trainable_parameters()

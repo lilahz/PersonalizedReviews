@@ -74,8 +74,7 @@ def calculate_sliding_window_scores(scores):
 
 def get_real_labels(model_scores, mode):
     mode = 'valid' if mode == 'eval' else 'test'
-    eval_labels = os.path.join(RAW_DATASET_ROOT_FOLDER, 'preprocessed', 
-                               f'{args.dataset_code}_{args.category.replace(" & ", "_")}_{args.signal}', f'{mode}_labels.pkl')
+    eval_labels = os.path.join(args.export_root, f'{mode}_labels.pkl')
     with open(eval_labels, 'rb') as f:
         real_labels = pickle.load(f)
     real_labels = real_labels[:len(model_scores)]

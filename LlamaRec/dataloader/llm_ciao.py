@@ -28,7 +28,7 @@ def generate_and_tokenize_eval(args, data_point, tokenizer, prompter):
                                       max_length=args.llm_max_text_len,
                                       padding=False,
                                       return_tensors=None)
-    tokenized_full_prompt["labels"] = [ord(o) - ord('A') for o in data_point["output"].split(',')]
+    tokenized_full_prompt["labels"] = ord(data_point["output"]) - ord('A')
     
     return tokenized_full_prompt
 
@@ -52,8 +52,7 @@ def generate_and_tokenize_train(args, data_point, tokenizer, prompter):
                                            data_point["output"])
     tokenized_full_prompt = tokenize(full_prompt, add_eos_token=True)
     if not args.llm_train_on_inputs:
-        response_len = len(data_point['output']) + 1
-        tokenized_full_prompt["labels"][:-response_len] = [-100] * len(tokenized_full_prompt["labels"][:-response_len])
+        tokenized_full_prompt["labels"][:-2] = [-100] * len(tokenized_full_prompt["labels"][:-2])
     
     return tokenized_full_prompt
 
@@ -69,17 +68,11 @@ def seq_to_token_ids(args, seq, candidates, labels, text_dict, tokenizer, prompt
     can_t = ' \n '.join(['(' + chr(ord(char_class)) + ') ' + truncate_title(text_dict[item])
                     for item, char_class in zip(candidates, args.class_list)])
 
-    char_labels = []
-    for label in labels:
-        try:
-            char_labels.append(args.class_list[candidates.index(label)])
-        except:
-            continue
-
-    if not char_labels:
-        char_labels.append(args.class_list[candidates.index(random.choice(candidates))])
-            
-    output = ','.join([chr(ord(char_label)) for char_label in char_labels])
+    try:
+        char_label = args.class_list[candidates.index(label)]
+    except:
+        char_label = args.class_list[candidates.index(random.choice(candidates))]
+    output = chr(ord(char_label))
     
     if args.signal == 'like':
         prompt_signal = 'liked'
@@ -197,9 +190,6 @@ class LLMTrainDataset(data_utils.Dataset):
         self.all_cands = []
         for u in list(u2seq.keys()):
             for seq, cand, labels in zip(u2seq[u], u2cand[u], u2labels[u]):
-                if len(cand) > 50:
-                    continue
-                
                 self.rng.shuffle(cand)
                     
                 if len(cand) <= self.args.llm_negative_sample_size + 1:
@@ -230,9 +220,12 @@ class LLMTrainDataset(data_utils.Dataset):
             if item in original_seq or item in answers: continue
             else: candidates.append(item)
         self.rng.shuffle(candidates)
-        answers = [a for a in answers if a in candidates]
+        try:
+            answer = random.choice([a for a in answers if a in candidates])
+        except:
+            answer = random.choice(candidates)
 
-        return seq_to_token_ids(self.args, seq, candidates, answers, self.text_dict, \
+        return seq_to_token_ids(self.args, seq, candidates, answer, self.text_dict, \
                                 self.tokenizer, self.prompter, eval=False)
 
 
@@ -249,7 +242,7 @@ class LLMValidDataset(data_utils.Dataset):
         self.all_answers = []
         self.all_cands = []
         self.all_labels = []
-        for u in list(u2seq.keys()):
+        for u in list(u2seq.keys())[:100]:
             for seq, cand, labels in zip(u2seq[u], u2cand[u], u2labels[u]):
                 self.rng.shuffle(cand)
                 self.all_labels.append([labels[i] for i in cand])
@@ -265,7 +258,7 @@ class LLMValidDataset(data_utils.Dataset):
                         self.all_cands += [batch]
                         self.all_answers.append([b for b in batch if labels[b] >= 3])
         
-        with open(save_folder.joinpath('valid_labels.pkl'), 'wb') as f:
+        with open(os.path.join(args.export_root, 'valid_labels.pkl'), 'wb') as f:
             pickle.dump(self.all_labels, f)
 
     def __len__(self):
@@ -273,12 +266,15 @@ class LLMValidDataset(data_utils.Dataset):
 
     def __getitem__(self, index):
         seq = self.all_seqs[index][:-1]
-        answers = self.all_answers[index]
         
         seq = seq[-self.max_len:]
         candidates = self.all_cands[index]
+        try:
+            answer = random.choice(self.all_answers[index])
+        except:
+            answer = random.choice(candidates)
         
-        return seq_to_token_ids(self.args, seq, candidates, answers, self.text_dict, self.tokenizer, self.prompter, eval=True)
+        return seq_to_token_ids(self.args, seq, candidates, answer, self.text_dict, self.tokenizer, self.prompter, eval=True)
 
 
 class LLMTestDataset(data_utils.Dataset):
@@ -312,7 +308,7 @@ class LLMTestDataset(data_utils.Dataset):
                         self.all_cands += [batch]
                         self.all_answers.append([b for b in batch if labels[b] >= 3])
         
-        with open(save_folder.joinpath('test_labels.pkl'), 'wb') as f:
+        with open(os.path.join(args.export_root, 'test_labels.pkl'), 'wb') as f:
             pickle.dump(self.all_labels, f)
     
     def __len__(self):
@@ -320,9 +316,12 @@ class LLMTestDataset(data_utils.Dataset):
     
     def __getitem__(self, index):
         seq = self.all_seqs[index][:-1]
-        answers = self.all_answers[index]
         
         seq = seq[-self.max_len:]
         candidates = self.all_cands[index]
+        try:
+            answer = random.choice(self.all_answers[index])
+        except:
+            answer = random.choice(candidates)
 
-        return seq_to_token_ids(self.args, seq, candidates, answers, self.text_dict, self.tokenizer, self.prompter, eval=True)
+        return seq_to_token_ids(self.args, seq, candidates, answer, self.text_dict, self.tokenizer, self.prompter, eval=True)
