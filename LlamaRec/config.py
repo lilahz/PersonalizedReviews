@@ -127,7 +127,7 @@ parser.add_argument('--llm_max_title_len', type=int, default=50)
 parser.add_argument('--llm_max_text_len', type=int, default=2500)
 parser.add_argument('--llm_max_history', type=int, default=20)
 parser.add_argument('--llm_train_on_inputs', type=bool, default=False)
-parser.add_argument('--llm_negative_sample_size', type=int, default=9)  # 19 negative & 1 positive
+parser.add_argument('--llm_negative_sample_size', type=int, default=19)  # 19 negative & 1 positive
 parser.add_argument('--llm_system_template', type=str,  # instruction
     default="Given user history of reviews they previously {}, recommend the reviews the user will like the most from the candidate pool using the reviews index letters.")
 parser.add_argument('--llm_input_template', type=str, \
