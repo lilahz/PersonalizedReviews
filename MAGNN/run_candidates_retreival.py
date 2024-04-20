@@ -40,6 +40,8 @@ num_review = 8919
 # num_user = 4965
 # num_review = 11737
 
+num_candidates = 10
+
 
 def build_predictions_df(category, signal, mode, y_proba, user_review, umap, rmap):
     y_proba_dict = {}
@@ -59,12 +61,14 @@ def build_predictions_df(category, signal, mode, y_proba, user_review, umap, rma
     df['prediction'] = df.progress_apply(lambda r: y_proba_dict[(r['voter_id'], r['review_id'])], axis=1)
     candidates = df.sort_values(['product_id', 'voter_id', 'prediction'], ascending=[0, 0, 0]).groupby(
         ['product_id', 'voter_id'], as_index=False).agg({'review_id': lambda x: list(x), 'vote': lambda x: list(x)})
-    candidates['candidates'] = candidates.progress_apply(lambda row: str(dict(zip(row['review_id'], row['vote']))), axis=1)
+    candidates['candidates'] = candidates.progress_apply(
+        lambda row: str(dict(zip(row['review_id'][:num_candidates], row['vote'][:num_candidates]))), axis=1
+    )
     candidates.drop(columns={'review_id', 'vote'}, inplace=True)
     candidates['y_true'] = candidates.progress_apply(
         lambda row: df[(df['product_id'] == row['product_id']) & (df['voter_id'] == row['voter_id'])]['y_true'].iloc[0], axis=1
     )
-    candidates.to_csv(os.path.join(OUTPUT_PATH, f'ciao_{category}_{signal}', f'{mode}_candidates.csv'), index=False)
+    candidates.to_csv(os.path.join(OUTPUT_PATH, f'ciao_{category}_{signal}', f'{mode}_{str(num_candidates)}_candidates.csv'), index=False)
 
 def run_model_Ciao(category, signal, hidden_dim, num_heads, attn_vec_dim, rnn_type, batch_size, neighbor_samples, **kwargs):
     

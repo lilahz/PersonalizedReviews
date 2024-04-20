@@ -106,8 +106,11 @@ def absolute_recall_mrr_ndcg_for_ks(scores, labels, ks, mode):
         f'/sise/bshapira-group/lilachzi/models/LlamaRec/data/preprocessed/ciao_{args.category}_{args.signal}/{mode}_candidates.csv',
         converters={'y_true': eval}
     )
+    y_true_df = y_true_df.loc[y_true_df.index.repeat(args.llm_bootstrap)]
     eval_df['y_true'] = y_true_df['y_true'].tolist()
-    eval_df['y_true'] = eval_df['y_true'].apply(lambda d: list(d.values())[20:] if len(d) >= 20 else [])
+    eval_df['y_true'] = eval_df['y_true'].apply(
+        lambda d: list(d.values())[args.llm_negative_sample_size + 1:] if len(d) >= args.llm_negative_sample_size + 1 else []
+    )
     eval_df['y'] = eval_df['y'] + eval_df['y_true']
     
     eval_df['nDCG@5'] = eval_df.apply(lambda x: calc_ndcg(x['y'][:5]), axis=1)
@@ -128,7 +131,7 @@ def absolute_recall_mrr_ndcg_for_ks(scores, labels, ks, mode):
         datetime_string = datetime.now().strftime("%Y_%m_%d_%H_%M")
         eval_df.to_csv(os.path.join(args.export_root, f'eval_predictions_{datetime_string}.csv'), index=False)
 
-    metrics = {k:v for k,v in eval_df.iloc[:, 2:].mean().items()}
+    metrics = {k:v for k,v in eval_df.iloc[:, 3:].mean().items()}
 
     return metrics
 

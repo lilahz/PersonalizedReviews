@@ -9,7 +9,7 @@ import torch.utils.data as data_utils
 import os
 import pickle
 import transformers
-from transformers import LlamaTokenizer
+from transformers import AutoTokenizer
 from transformers.models.llama.tokenization_llama import DEFAULT_SYSTEM_PROMPT
 from trainer import absolute_recall_mrr_ndcg_for_ks
 
@@ -116,7 +116,7 @@ class LLMDataloader():
         args.num_items = self.item_count
         self.max_len = args.llm_max_history
         
-        self.tokenizer = LlamaTokenizer.from_pretrained(
+        self.tokenizer = AutoTokenizer.from_pretrained(
             args.llm_base_tokenizer, cache_dir=args.llm_cache_dir)
         self.tokenizer.pad_token = self.tokenizer.unk_token
         self.tokenizer.padding_side = 'left'
@@ -220,12 +220,13 @@ class LLMValidDataset(data_utils.Dataset):
         self.all_cands = []
         self.all_labels = []
         for seq, cand, labels in zip(u2seq, u2cand, u2labels):
-            self.rng.shuffle(cand)
-            self.all_labels.append([labels[i] for i in cand])
-                
-            self.all_seqs += [seq]
-            self.all_cands += [cand]
-            self.all_answers.append([c for c in cand if labels[c] >= 3])
+            for i in range(args.llm_bootstrap):
+                self.rng.shuffle(cand)
+                self.all_labels.append([labels[i] for i in cand])
+                    
+                self.all_seqs += [seq]
+                self.all_cands += [cand]
+                self.all_answers.append([c for c in cand if labels[c] >= 3])
         
         with open(os.path.join(args.export_root, 'valid_labels.pkl'), 'wb') as f:
             pickle.dump(self.all_labels, f)
@@ -262,12 +263,13 @@ class LLMTestDataset(data_utils.Dataset):
         self.all_cands = []
         self.all_labels = []
         for seq, cand, labels in zip(u2seq, u2cand, u2labels):
-            self.rng.shuffle(cand)
-            self.all_labels.append([labels[i] for i in cand])
-                
-            self.all_seqs += [seq]
-            self.all_cands += [cand]
-            self.all_answers.append([c for c in cand if labels[c] >= 3])
+            for i in range(args.llm_bootstrap):
+                self.rng.shuffle(cand)
+                self.all_labels.append([labels[i] for i in cand])
+                    
+                self.all_seqs += [seq]
+                self.all_cands += [cand]
+                self.all_answers.append([c for c in cand if labels[c] >= 3])
         
         with open(os.path.join(args.export_root, 'test_labels.pkl'), 'wb') as f:
             pickle.dump(self.all_labels, f)
