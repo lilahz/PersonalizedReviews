@@ -121,6 +121,8 @@ parser.add_argument('--bert_mask_prob', type=float, default=0.25)
 ################
 # LLM Model
 ################
+# parser.add_argument('--llm_base_model', type=str, default='meta-llama/Llama-2-7b-hf')
+# parser.add_argument('--llm_base_tokenizer', type=str, default='meta-llama/Llama-2-7b-hf')
 parser.add_argument('--llm_base_model', type=str, default='meta-llama/Meta-Llama-3-8B')
 parser.add_argument('--llm_base_tokenizer', type=str, default='meta-llama/Meta-Llama-3-8B')
 parser.add_argument('--llm_max_title_len', type=int, default=50)
@@ -128,11 +130,14 @@ parser.add_argument('--llm_max_text_len', type=int, default=2500)
 parser.add_argument('--llm_max_history', type=int, default=20)
 parser.add_argument('--llm_train_on_inputs', type=bool, default=False)
 parser.add_argument('--llm_negative_sample_size', type=int, default=9)  # 19 negative & 1 positive
-parser.add_argument('--llm_bootstrap', type=int, default=3)
+parser.add_argument('--llm_bootstrap', type=int, default=1)
+# parser.add_argument('--llm_system_template', type=str,  # instruction
+#     default="Given user history of reviews they previously {}, recommend the reviews the user will like the most from the candidate pool using the reviews index letters.")
 parser.add_argument('--llm_system_template', type=str,  # instruction
-    default="Given user history of reviews they previously {}, recommend the reviews the user will like the most from the candidate pool using the reviews index letters.")
+    default="Based on given user history of reviews previously {}, " \
+            "return the index letter of the review the user will like from the candidate reviews.")
 parser.add_argument('--llm_input_template', type=str, \
-    default='User {} history: {}; \n Candidate pool: {}')
+    default='User {} history: {}; \n Candidate reviews for product {}: {}')
 parser.add_argument('--llm_load_in_4bit', type=bool, default=True)
 parser.add_argument('--llm_retrieved_path', type=str, default=None)
 parser.add_argument('--llm_cache_dir', type=str, default=None)
@@ -140,7 +145,7 @@ parser.add_argument('--llm_cache_dir', type=str, default=None)
 ################
 # Lora
 ################
-parser.add_argument('--lora_r', type=int, default=8)
+parser.add_argument('--lora_r', type=int, default=16)
 parser.add_argument('--lora_alpha', type=int, default=64)
 parser.add_argument('--lora_dropout', type=float, default=0.05)
 parser.add_argument('--lora_target_modules', type=list, default=['q_proj', 'v_proj'])
