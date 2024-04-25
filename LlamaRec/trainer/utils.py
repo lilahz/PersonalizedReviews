@@ -80,10 +80,18 @@ def get_real_labels(model_scores, mode):
     
     ranks = []
     ranked_labels = []
-    for i, labels in enumerate(real_labels):
-        labels = torch.tensor(labels)
-        scores = model_scores[i]
+    for i, labels in zip(range(0, len(real_labels), args.llm_bootstrap), real_labels[::args.llm_bootstrap]):
+        labels = torch.tensor(real_labels[i:i+args.llm_bootstrap])
+        scores = model_scores[i:i+args.llm_bootstrap]
+        stacked_scores = []
+        for label, score in zip(labels, scores):
+            sorted_score = torch.zeros_like(label[:, 0])
+            sorted_score = torch.cat((sorted_score.index_copy_(0, label[:, 0].type(torch.int64), score[:len(label)]), 
+                                      score[len(label):]), -1)
+            stacked_scores.append(sorted_score)
+        scores = torch.vstack(stacked_scores).mean(dim=0)
 
+        labels = torch.sort(labels[0][:, 1], descending=True).values
         rank = (-scores).argsort(dim=-1)
         if len(rank) > len(labels):
             mask = rank < len(labels)
@@ -106,7 +114,6 @@ def absolute_recall_mrr_ndcg_for_ks(scores, labels, ks, mode):
         f'/sise/bshapira-group/lilachzi/models/LlamaRec/data/preprocessed/ciao_{args.category}_{args.signal}/{mode}_candidates.csv',
         converters={'y_true': eval}
     )
-    y_true_df = y_true_df.loc[y_true_df.index.repeat(args.llm_bootstrap)]
     eval_df['y_true'] = y_true_df['y_true'].tolist()
     eval_df['y_true'] = eval_df['y_true'].apply(
         lambda d: list(d.values())[args.llm_negative_sample_size + 1:] if len(d) >= args.llm_negative_sample_size + 1 else []

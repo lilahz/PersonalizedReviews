@@ -224,11 +224,13 @@ class LLMValidDataset(data_utils.Dataset):
         self.all_cands = []
         self.all_labels = []
         self.all_products = []
-        for seq, cand, labels in zip(u2seq, u2cand, u2labels):
+        for seq, _cand, labels in zip(u2seq, u2cand, u2labels):
             for i in range(args.llm_bootstrap):
-                product, cand = cand
-                self.rng.shuffle(cand)
-                self.all_labels.append([labels[i] for i in cand])
+                product, cand = _cand
+                idx_cand = list(enumerate(cand))
+                self.rng.shuffle(idx_cand)
+                cand = [c[1] for c in idx_cand]
+                self.all_labels.append([(c[0], labels[c[1]]) for c in idx_cand])
                     
                 self.all_seqs += [seq]
                 self.all_cands += [cand]
@@ -271,11 +273,13 @@ class LLMTestDataset(data_utils.Dataset):
         self.all_cands = []
         self.all_labels = []
         self.all_products = []
-        for seq, cand, labels in zip(u2seq, u2cand, u2labels):
+        for seq, _cand, labels in zip(u2seq, u2cand, u2labels):
             for i in range(args.llm_bootstrap):
-                product, cand = cand
-                self.rng.shuffle(cand)
-                self.all_labels.append([labels[i] for i in cand])
+                product, cand = _cand
+                idx_cand = list(enumerate(cand))
+                self.rng.shuffle(idx_cand)
+                cand = [c[1] for c in idx_cand]
+                self.all_labels.append([(c[0], labels[c[1]]) for c in idx_cand])
                     
                 self.all_seqs += [seq]
                 self.all_cands += [cand]
