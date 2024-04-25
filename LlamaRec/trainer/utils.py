@@ -73,7 +73,6 @@ def calculate_sliding_window_scores(scores):
     
 
 def get_real_labels(model_scores, mode):
-    mode = 'valid' if mode == 'eval' else 'test'
     eval_labels = os.path.join(args.export_root, f'{mode}_labels.pkl')
     with open(eval_labels, 'rb') as f:
         real_labels = pickle.load(f)
@@ -81,29 +80,18 @@ def get_real_labels(model_scores, mode):
     
     ranks = []
     ranked_labels = []
-    batch_size = model_scores.size(1)
-    i = 0
-    for labels in real_labels:
-        labels = torch.tensor(labels)
-        
-        # try window slide
-        # if len(labels) <= args.llm_negative_sample_size + 1:
-        #     scores = model_scores[i]
-        #     i += 1
-        # else:
-        #     num_windows = len(range(0, len(labels) - args.sliding_window_size + 1, args.sliding_window_step))
-        #     scores = calculate_sliding_window_scores(model_scores[i:i+num_windows, :args.sliding_window_size])
-        #     i += num_windows
-            
-        batches = len([i for i in range(0, len(labels) - 1, batch_size - 1)])
-        scores = model_scores[i:i+batches]
-        # normalize score batches
-        if batches > 1:
-            scores = scores / scores.sum()
-            
-        i += batches
-        
-        scores = scores.flatten()
+    for i, labels in zip(range(0, len(real_labels), args.llm_bootstrap), real_labels[::args.llm_bootstrap]):
+        labels = torch.tensor(real_labels[i:i+args.llm_bootstrap])
+        scores = model_scores[i:i+args.llm_bootstrap]
+        stacked_scores = []
+        for label, score in zip(labels, scores):
+            sorted_score = torch.zeros_like(label[:, 0])
+            sorted_score = torch.cat((sorted_score.index_copy_(0, label[:, 0].type(torch.int64), score[:len(label)]), 
+                                      score[len(label):]), -1)
+            stacked_scores.append(sorted_score)
+        scores = torch.vstack(stacked_scores).mean(dim=0)
+
+        labels = torch.sort(labels[0][:, 1], descending=True).values
         rank = (-scores).argsort(dim=-1)
         if len(rank) > len(labels):
             mask = rank < len(labels)
@@ -116,10 +104,21 @@ def get_real_labels(model_scores, mode):
     return ranked_labels, ranks
 
 def absolute_recall_mrr_ndcg_for_ks(scores, labels, ks, mode):
+    mode = 'valid' if mode == 'eval' else 'test'
     real_labels, rank = get_real_labels(scores, mode)
     eval_df = pd.DataFrame(real_labels, columns=['y'])
     eval_df['rank'] = rank
     eval_df['y'] = eval_df['y'].apply(eval)
+    
+    y_true_df = pd.read_csv(
+        f'/sise/bshapira-group/lilachzi/models/LlamaRec/data/preprocessed/ciao_{args.category}_{args.signal}/{mode}_candidates.csv',
+        converters={'y_true': eval}
+    )
+    eval_df['y_true'] = y_true_df['y_true'].tolist()
+    eval_df['y_true'] = eval_df['y_true'].apply(
+        lambda d: list(d.values())[args.llm_negative_sample_size + 1:] if len(d) >= args.llm_negative_sample_size + 1 else []
+    )
+    eval_df['y'] = eval_df['y'] + eval_df['y_true']
     
     eval_df['nDCG@5'] = eval_df.apply(lambda x: calc_ndcg(x['y'][:5]), axis=1)
     eval_df['MRR'] = eval_df.apply(lambda x: calc_mrr(x['y']), axis=1)
@@ -139,7 +138,7 @@ def absolute_recall_mrr_ndcg_for_ks(scores, labels, ks, mode):
         datetime_string = datetime.now().strftime("%Y_%m_%d_%H_%M")
         eval_df.to_csv(os.path.join(args.export_root, f'eval_predictions_{datetime_string}.csv'), index=False)
 
-    metrics = {k:v for k,v in eval_df.iloc[:, 2:].mean().items()}
+    metrics = {k:v for k,v in eval_df.iloc[:, 3:].mean().items()}
 
     return metrics
 

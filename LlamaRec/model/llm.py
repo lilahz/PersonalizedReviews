@@ -839,7 +839,7 @@ class LlamaForCausalLM(LlamaPreTrainedModel):
         elif labels is not None:
             loss = torch.tensor(-1.)  # loss cannot be directly computed in inference
 
-        logits = logits[:, -2]  # we only need last position logits for inference 
+        logits = logits[:, -1]  # we only need last position logits for inference 
 
         if not return_dict:
             output = (logits,) + outputs[1:]

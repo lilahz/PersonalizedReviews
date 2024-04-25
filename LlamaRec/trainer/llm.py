@@ -42,9 +42,16 @@ def llama_collate_fn_w_truncation(llm_max_length, eval=False):
                 attention_mask = [0] * padding_length + attention_mask
                 if not eval: labels = [-100] * padding_length + labels
 
-            if eval: assert input_ids[-1] == 13
+            # Llama2 7B 
+            # if eval: assert input_ids[-1] == 13
+            # else:
+            #     assert input_ids[-3] == 13 and input_ids[-1] == 2
+            #     assert labels[-3] == -100 and labels[-2] != -100
+            
+            # Llama3 8B
+            if eval: assert input_ids[-1] == 512
             else:
-                assert input_ids[-3] == 13 and input_ids[-1] == 2
+                assert input_ids[-3] == 512 and input_ids[-1] == 128001
                 assert labels[-3] == -100 and labels[-2] != -100
             
             all_input_ids.append(torch.tensor(input_ids).long())
