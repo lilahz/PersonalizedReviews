@@ -133,4 +133,4 @@ class AbstractDataset(metaclass=ABCMeta):
 
     def _get_preprocessed_dataset_path(self):
         folder = self._get_preprocessed_folder_path()
-        return folder.joinpath(f'dataset_{str(self.args.llm_negative_sample_size + 1)}_v2.pkl')
+        return folder.joinpath(f'dataset_{str(self.args.llm_num_candidates)}_pw.pkl')

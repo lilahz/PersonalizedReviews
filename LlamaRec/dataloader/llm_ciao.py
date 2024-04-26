@@ -185,7 +185,6 @@ class LLMTrainDataset(data_utils.Dataset):
         self.all_products = []
         for seq, cand in zip(u2seq, u2cand):
             product, cand = cand
-            self.rng.shuffle(cand)
                 
             self.all_seqs += [seq]
             self.all_cands += [cand]
@@ -196,13 +195,10 @@ class LLMTrainDataset(data_utils.Dataset):
 
     def __getitem__(self, index):
         tokens = self.all_seqs[index]
-        answer = tokens[-1]
-        original_seq = tokens[:-1]
         
-        seq = original_seq[-self.max_len:]
-        candidates = [answer]
-        neg_samples = self.all_cands[index]
-        candidates.extend(neg_samples)
+        seq = tokens[-self.max_len:]
+        candidates = self.all_cands[index]
+        answer = candidates[0]
         self.rng.shuffle(candidates)
         product = self.all_products[index]
 
@@ -224,18 +220,20 @@ class LLMValidDataset(data_utils.Dataset):
         self.all_cands = []
         self.all_labels = []
         self.all_products = []
-        for seq, _cand, labels in zip(u2seq, u2cand, u2labels):
-            for i in range(args.llm_bootstrap):
-                product, cand = _cand
-                idx_cand = list(enumerate(cand))
-                self.rng.shuffle(idx_cand)
-                cand = [c[1] for c in idx_cand]
-                self.all_labels.append([(c[0], labels[c[1]]) for c in idx_cand])
-                    
+        for seq, _cand, labels in zip(u2seq[:100], u2cand[:100], u2labels[:100]):
+            product, cand = _cand
+            answers = [p[0] for p in cand]
+            indices = []
+            for pair in cand:
+                idx_pair = list(enumerate(pair))
+                self.rng.shuffle(idx_pair)
+                indices.append([i[0] for i in idx_pair])
                 self.all_seqs += [seq]
-                self.all_cands += [cand]
-                self.all_answers.append([c for c in cand if labels[c] >= 3])
+                self.all_cands.append([i[1] for i in idx_pair])
                 self.all_products.append(product)
+                
+            self.all_labels.append((labels, indices))
+            self.all_answers.extend(answers)
         
         with open(os.path.join(args.export_root, 'valid_labels.pkl'), 'wb') as f:
             pickle.dump(self.all_labels, f)
@@ -248,11 +246,7 @@ class LLMValidDataset(data_utils.Dataset):
         
         seq = seq[-self.max_len:]
         candidates = self.all_cands[index]
-        possible_answers = self.all_answers[index]
-        if possible_answers:
-            answer = random.choice(possible_answers)
-        else:
-            answer = random.choice(candidates)
+        answer = self.all_answers[index]
         product = self.all_products[index]
         
         return seq_to_token_ids(self.args, seq, candidates, answer, product, self.text_dict, self.tokenizer, self.prompter, eval=True)
@@ -274,17 +268,19 @@ class LLMTestDataset(data_utils.Dataset):
         self.all_labels = []
         self.all_products = []
         for seq, _cand, labels in zip(u2seq, u2cand, u2labels):
-            for i in range(args.llm_bootstrap):
-                product, cand = _cand
-                idx_cand = list(enumerate(cand))
-                self.rng.shuffle(idx_cand)
-                cand = [c[1] for c in idx_cand]
-                self.all_labels.append([(c[0], labels[c[1]]) for c in idx_cand])
-                    
+            product, cand = _cand
+            answers = [p[0] for p in cand]
+            indices = []
+            for pair in cand:
+                idx_pair = list(enumerate(pair))
+                self.rng.shuffle(idx_pair)
+                indices.append([i[0] for i in idx_pair])
                 self.all_seqs += [seq]
-                self.all_cands += [cand]
-                self.all_answers.append([c for c in cand if labels[c] >= 3])
+                self.all_cands.append([i[1] for i in idx_pair])
                 self.all_products.append(product)
+                
+            self.all_labels.append((labels, indices))
+            self.all_answers.extend(answers)
         
         with open(os.path.join(args.export_root, 'test_labels.pkl'), 'wb') as f:
             pickle.dump(self.all_labels, f)
@@ -297,11 +293,7 @@ class LLMTestDataset(data_utils.Dataset):
         
         seq = seq[-self.max_len:]
         candidates = self.all_cands[index]
-        possible_answers = self.all_answers[index]
-        if possible_answers:
-            answer = random.choice(possible_answers)
-        else:
-            answer = random.choice(candidates)
+        answer = self.all_answers[index]
         product = self.all_products[index]
 
         return seq_to_token_ids(self.args, seq, candidates, answer, product, self.text_dict, self.tokenizer, self.prompter, eval=True)
