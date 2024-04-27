@@ -16,7 +16,7 @@ def set_template(args):
     batch = 8
     
     print(f'DEBUG: {args.dataset_code}{args.category} - {args.signal}')
-    args.test = f'_8B_chat_b_{batch}_c_{args.llm_negative_sample_size + 1}_bs_{args.llm_bootstrap}_lr_{args.lora_lr}_pw'
+    args.test = f'_8B_chat_b_{batch}_c_{args.llm_num_candidates}_bs_{args.llm_bootstrap}_lr_{args.lora_lr}_pw'
     print(f'DEBUG: {args.test}')
 
     args.lora_micro_batch_size = batch
@@ -131,7 +131,7 @@ parser.add_argument('--llm_max_text_len', type=int, default=1500)
 parser.add_argument('--llm_max_history', type=int, default=20)
 parser.add_argument('--llm_train_on_inputs', type=bool, default=False)
 parser.add_argument('--llm_negative_sample_size', type=int, default=1)  # 19 negative & 1 positive
-parser.add_argument('--llm_num_candidates', type=int, default=20)
+parser.add_argument('--llm_num_candidates', type=int, default=10)
 parser.add_argument('--llm_bootstrap', type=int, default=1)
 # parser.add_argument('--llm_system_template', type=str,  # instruction
 #     default="Given user history of reviews they previously {}, recommend the reviews the user will like the most from the candidate pool using the reviews index letters.")
@@ -152,7 +152,7 @@ parser.add_argument('--lora_alpha', type=int, default=64)
 parser.add_argument('--lora_dropout', type=float, default=0.05)
 parser.add_argument('--lora_target_modules', type=list, default=['q_proj', 'v_proj'])
 parser.add_argument('--lora_num_epochs', type=int, default=1)
-parser.add_argument('--lora_val_iterations', type=int, default=100)
+parser.add_argument('--lora_val_iterations', type=int, default=50)
 parser.add_argument('--lora_early_stopping_patience', type=int, default=2)
 parser.add_argument('--lora_lr', type=float, default=5e-4)
 parser.add_argument('--lora_micro_batch_size', type=int, default=16)

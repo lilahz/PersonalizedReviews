@@ -220,7 +220,7 @@ class LLMValidDataset(data_utils.Dataset):
         self.all_cands = []
         self.all_labels = []
         self.all_products = []
-        for seq, _cand, labels in zip(u2seq[:100], u2cand[:100], u2labels[:100]):
+        for seq, _cand, labels in zip(u2seq, u2cand, u2labels):
             product, cand = _cand
             answers = [p[0] for p in cand]
             indices = []
