@@ -35,6 +35,9 @@ def main(args, export_root=None):
         else:
             export_root = os.path.join(EXPERIMENT_ROOT, f'{args.dataset_code}{args.category.replace(" & ", "_")}_{args.signal}{args.test}')
         args.export_root = export_root
+        
+        if not os.path.exists(export_root):
+            os.makedirs(export_root)
 
     train_loader, val_loader, test_loader, tokenizer = dataloader_factory(args)
     bnb_config = BitsAndBytesConfig(
