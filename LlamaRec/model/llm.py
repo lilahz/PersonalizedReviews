@@ -840,6 +840,7 @@ class LlamaForCausalLM(LlamaPreTrainedModel):
             loss = torch.tensor(-1.)  # loss cannot be directly computed in inference
 
         logits = logits[:, -1]  # we only need last position logits for inference 
+        logits = logits[:, [319, 350]] # try to reduce memory when taking only the logits of classes A and B
 
         if not return_dict:
             output = (logits,) + outputs[1:]

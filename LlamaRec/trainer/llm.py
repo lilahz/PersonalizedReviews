@@ -43,16 +43,16 @@ def llama_collate_fn_w_truncation(llm_max_length, eval=False):
                 if not eval: labels = [-100] * padding_length + labels
 
             # Llama2 7B 
-            # if eval: assert input_ids[-1] == 13
-            # else:
-            #     assert input_ids[-3] == 13 and input_ids[-1] == 2
-            #     assert labels[-3] == -100 and labels[-2] != -100
+            if eval: assert input_ids[-1] == 13
+            else:
+                assert input_ids[-3] == 13 and input_ids[-1] == 2
+                assert labels[-3] == -100 and labels[-2] != -100
             
             # Llama3 8B
-            if eval: assert input_ids[-1] == 512
-            else:
-                assert input_ids[-3] == 512 and input_ids[-1] == 128001
-                assert labels[-3] == -100 and labels[-2] != -100
+            # if eval: assert input_ids[-1] == 512
+            # else:
+            #     assert input_ids[-3] == 512 and input_ids[-1] == 128001
+            #     assert labels[-3] == -100 and labels[-2] != -100
             
             all_input_ids.append(torch.tensor(input_ids).long())
             all_attention_mask.append(torch.tensor(attention_mask).long())
@@ -109,9 +109,9 @@ class LLMTrainer(Trainer):
 
         hf_args = TrainingArguments(
             per_device_train_batch_size=args.lora_micro_batch_size,
-            per_device_eval_batch_size=args.lora_micro_batch_size,
-            gradient_accumulation_steps=args.train_batch_size//args.lora_micro_batch_size,
-            eval_accumulation_steps=args.val_batch_size//args.lora_micro_batch_size,
+            per_device_eval_batch_size=args.val_batch_size,
+            gradient_accumulation_steps=args.train_batch_size//args.train_batch_size,
+            eval_accumulation_steps=args.val_batch_size*args.val_batch_size,
             warmup_steps=args.warmup_steps,
             num_train_epochs=args.lora_num_epochs,
             learning_rate=args.lora_lr,
