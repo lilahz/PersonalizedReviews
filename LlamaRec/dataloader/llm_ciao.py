@@ -28,7 +28,8 @@ def generate_and_tokenize_eval(args, data_point, tokenizer, prompter):
                                       max_length=args.llm_max_text_len,
                                       padding=False,
                                       return_tensors=None)
-    tokenized_full_prompt["labels"] = ord(data_point["output"]) - ord('A')
+    # tokenized_full_prompt["labels"] = ord(data_point["output"]) - ord('A')
+    tokenized_full_prompt["labels"] = tokenizer(data_point["output"])['input_ids'][1]
     
     return tokenized_full_prompt
 
@@ -65,9 +66,14 @@ def seq_to_token_ids(args, seq, candidates, label, product, text_dict, tokenizer
 
     seq_t = ' \n '.join(['(' + str(idx + 1) + ') ' + truncate_title(text_dict[item]) 
                     for idx, item in enumerate(seq)])
-    can_t = ' \n '.join(['(' + chr(ord(char_class)) + ') ' + truncate_title(text_dict[item])
-                    for item, char_class in zip(candidates, args.class_list)])
-    output = chr(ord('A') + candidates.index(label))  # ranking only
+    # point-wise
+    can_t = truncate_title(text_dict[candidates])
+    output = label
+    
+    # pair-wise
+    # can_t = ' \n '.join(['(' + chr(ord(char_class)) + ') ' + truncate_title(text_dict[item])
+    #                 for item, char_class in zip(candidates, args.class_list)])
+    # output = chr(ord('A') + candidates.index(label))  # ranking only
     
     if args.signal == 'like':
         prompt_signal = 'liked'
@@ -184,11 +190,21 @@ class LLMTrainDataset(data_utils.Dataset):
         self.all_cands = []
         self.all_products = []
         for seq, cand in zip(u2seq, u2cand):
+            # point-wise
             product, cand = cand
+            
+            for i, c in enumerate(cand):
+                self.all_seqs += [seq]
+                self.all_cands.append(c)
+                self.all_products.append(product)
+                self.all_answers.append('Yes' if i == 0 else 'No')
                 
-            self.all_seqs += [seq]
-            self.all_cands += [cand]
-            self.all_products.append(product)
+            # pair-wise
+            # product, cand = cand
+                
+            # self.all_seqs += [seq]
+            # self.all_cands += [cand]
+            # self.all_products.append(product)
 
     def __len__(self):
         return len(self.all_seqs)
@@ -198,8 +214,9 @@ class LLMTrainDataset(data_utils.Dataset):
         
         seq = tokens[-self.max_len:]
         candidates = self.all_cands[index]
-        answer = candidates[0]
-        self.rng.shuffle(candidates)
+        answer = self.all_answers[index]
+        # answer = candidates[0]
+        # self.rng.shuffle(candidates)
         product = self.all_products[index]
 
         return seq_to_token_ids(self.args, seq, candidates, answer, product, self.text_dict, \
@@ -221,19 +238,30 @@ class LLMValidDataset(data_utils.Dataset):
         self.all_labels = []
         self.all_products = []
         for seq, _cand, labels in zip(u2seq, u2cand, u2labels):
+            # point-wise
             product, cand = _cand
-            answers = [p[0] for p in cand]
-            indices = []
-            for pair in cand:
-                idx_pair = list(enumerate(pair))
-                self.rng.shuffle(idx_pair)
-                indices.append([i[0] for i in idx_pair])
+            for c in cand:
                 self.all_seqs += [seq]
-                self.all_cands.append([i[1] for i in idx_pair])
+                self.all_cands.append(c)
                 self.all_products.append(product)
+                self.all_answers.append('Yes' if labels[c] >= 3 else 'No')
                 
-            self.all_labels.append((labels, indices))
-            self.all_answers.extend(answers)
+            self.all_labels.append(labels)
+            
+            # pair-wise
+            # product, cand = _cand
+            # answers = [p[0] for p in cand]
+            # indices = []
+            # for pair in cand:
+            #     idx_pair = list(enumerate(pair))
+            #     self.rng.shuffle(idx_pair)
+            #     indices.append([i[0] for i in idx_pair])
+            #     self.all_seqs += [seq]
+            #     self.all_cands.append([i[1] for i in idx_pair])
+            #     self.all_products.append(product)
+                
+            # self.all_labels.append((labels, indices))
+            # self.all_answers.extend(answers)
         
         with open(os.path.join(args.export_root, 'valid_labels.pkl'), 'wb') as f:
             pickle.dump(self.all_labels, f)
@@ -268,21 +296,32 @@ class LLMTestDataset(data_utils.Dataset):
         self.all_labels = []
         self.all_products = []
         for seq, _cand, labels in zip(u2seq, u2cand, u2labels):
+            # point-wise
             product, cand = _cand
-            answers = [p[0] for p in cand]
-            indices = []
-            for pair in cand:
-                idx_pair = list(enumerate(pair))
-                self.rng.shuffle(idx_pair)
-                indices.append([i[0] for i in idx_pair])
+            for c in cand:
                 self.all_seqs += [seq]
-                self.all_cands.append([i[1] for i in idx_pair])
+                self.all_cands.append(c)
                 self.all_products.append(product)
+                self.all_answers.append('Yes' if labels[c] >= 3 else 'No')
                 
-            self.all_labels.append((labels, indices))
-            self.all_answers.extend(answers)
+            self.all_labels.append(labels)
+            
+            # pair-wise
+            # product, cand = _cand
+            # answers = [p[0] for p in cand]
+            # indices = []
+            # for pair in cand:
+            #     idx_pair = list(enumerate(pair))
+            #     self.rng.shuffle(idx_pair)
+            #     indices.append([i[0] for i in idx_pair])
+            #     self.all_seqs += [seq]
+            #     self.all_cands.append([i[1] for i in idx_pair])
+            #     self.all_products.append(product)
+                
+            # self.all_labels.append((labels, indices))
+            # self.all_answers.extend(answers)
         
-        with open(os.path.join(args.export_root, 'test_labels.pkl'), 'wb') as f:
+        with open(os.path.join(args.export_root, f'test_labels.pkl'), 'wb') as f:
             pickle.dump(self.all_labels, f)
     
     def __len__(self):

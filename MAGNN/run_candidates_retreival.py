@@ -28,11 +28,11 @@ num_ntype = 3
 # num_user = 4417
 # num_review = 14091
 # Games
-num_user = 4269
-num_review = 8919
+# num_user = 4269
+# num_review = 8919
 # Food & Drink
-# num_user = 4410
-# num_review = 12084
+num_user = 4410
+num_review = 12084
 # DVDs
 # num_user = 5189
 # num_review = 27964
@@ -68,7 +68,7 @@ def build_predictions_df(category, signal, mode, y_proba, user_review, umap, rma
     candidates['y_true'] = candidates.progress_apply(
         lambda row: df[(df['product_id'] == row['product_id']) & (df['voter_id'] == row['voter_id'])]['y_true'].iloc[0], axis=1
     )
-    candidates.to_csv(os.path.join(OUTPUT_PATH, f'ciao_{category}_{signal}', f'{mode}_{str(num_candidates)}_candidates.csv'), index=False)
+    candidates.to_csv(os.path.join(OUTPUT_PATH, f'ciao_{category.replace(" & ", "_")}_{signal}', f'magnn_{mode}_{str(num_candidates)}_candidates.csv'), index=False)
 
 def run_model_Ciao(category, signal, hidden_dim, num_heads, attn_vec_dim, rnn_type, batch_size, neighbor_samples, **kwargs):
     
@@ -81,7 +81,7 @@ def run_model_Ciao(category, signal, hidden_dim, num_heads, attn_vec_dim, rnn_ty
     lr = best_model['lr']
     weight_decay = best_model['weight_decay']
     feats_type = best_model['feats_type']
-    sub_feats_type = best_model['sub_feats_type']
+    sub_feats_type = f"{best_model['sub_feats_type']}"
     model_name = best_model['model']
     print(f'Best model: {model_name}')
     
@@ -103,8 +103,9 @@ def run_model_Ciao(category, signal, hidden_dim, num_heads, attn_vec_dim, rnn_ty
         in_dims = [features.shape[1] for features in features_list]
         
     val_pos_user_review = train_val_test_pos_user_review['val_pos_user_review']
-    test_pos_user_review = train_val_test_pos_user_review['test_pos_user_review']
     val_neg_user_review = train_val_test_neg_user_review['val_neg_user_review']
+    
+    test_pos_user_review = train_val_test_pos_user_review['test_pos_user_review']
     test_neg_user_review = train_val_test_neg_user_review['test_neg_user_review']
     
     umap, rmap, pmap = load_mappings(category, signal)
@@ -168,9 +169,6 @@ def run_model_Ciao(category, signal, hidden_dim, num_heads, attn_vec_dim, rnn_ty
         val_user_review = np.concatenate([val_pos_user_review, val_neg_user_review])
         
         build_predictions_df(category, signal, 'valid', y_proba_val, val_user_review, umap, rmap)
-
-        pos_test_idx_generator = index_generator(batch_size=batch_size, num_data=len(test_pos_user_review), shuffle=False)
-        neg_test_idx_generator = index_generator(batch_size=batch_size, num_data=len(test_neg_user_review), shuffle=False)
 
         for iteration in tqdm(range(pos_test_idx_generator.num_iterations()), desc='Positive test candidates'):
             # forward

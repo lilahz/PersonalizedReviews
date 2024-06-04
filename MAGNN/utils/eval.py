@@ -121,9 +121,9 @@ def calculate_scores(test_set, task, run_name):
 
     scores_df['nDCG@5'] = test_set.apply(lambda row: calc_ndcg(row['y'][:5]), axis=1)
     scores_df['MRR'] = test_set.apply(lambda row: calc_mrr(row['y']), axis=1)
-    scores_df['Recall@1'] = test_set.apply(lambda row: calc_recall_at_k(row['y_true'], row['y'], 1), axis=1)
-    scores_df['Recall@3'] = test_set.apply(lambda row: calc_recall_at_k(row['y_true'], row['y'], 3), axis=1)
-    scores_df['Recall@5'] = test_set.apply(lambda row: calc_recall_at_k(row['y_true'], row['y'], 5), axis=1)
+    scores_df['Recall@1'] = test_set.apply(lambda row: calc_recall_at_k(row['y'], row['y'], 1), axis=1)
+    scores_df['Recall@3'] = test_set.apply(lambda row: calc_recall_at_k(row['y'], row['y'], 3), axis=1)
+    scores_df['Recall@5'] = test_set.apply(lambda row: calc_recall_at_k(row['y'], row['y'], 5), axis=1)
     scores_df['Precision@1'] = test_set.apply(lambda row: calc_precision_at_k(row['y'], 1), axis=1)
     scores_df['Precision@3'] = test_set.apply(lambda row: calc_precision_at_k(row['y'], 3), axis=1)
     scores_df['Precision@5'] = test_set.apply(lambda row: calc_precision_at_k(row['y'], 5), axis=1)

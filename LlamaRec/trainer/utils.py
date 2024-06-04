@@ -78,20 +78,36 @@ def get_real_labels(model_scores, mode):
     with open(eval_labels, 'rb') as f:
         real_labels = pickle.load(f)
     
+    # ranks = []
+    # ranked_labels = []
+    # i = 0
+    # for labels, indices in real_labels:
+    #     y = {rid: 0 for rid in labels.keys()}
+    #     pairs = list(combinations(labels.keys(), 2))
+    #     scores = model_scores[i:i+len(pairs)]
+    #     i+=len(pairs)
+        
+    #     for idx, pair in enumerate(scores):
+    #         sorted_pair = torch.zeros_like(pair)
+    #         sorted_pair = sorted_pair.index_copy_(0, torch.tensor(indices[idx]).type(torch.int64), pair)
+    #         y[pairs[idx][sorted_pair.argmax()]] += 1
+            
+    #     y = dict(sorted(y.items(), key=lambda item: item[1], reverse=True))
+    #     ranks.append(str(y))
+    #     y = [labels[rid] for rid in y.keys()]
+    #     ranked_labels.append(str(y))
+        
+    # return ranked_labels, ranks
+
     ranks = []
     ranked_labels = []
-    i = 0
-    for labels, indices in real_labels:
-        y = {rid: 0 for rid in labels.keys()}
-        pairs = list(combinations(labels.keys(), 2))
-        scores = model_scores[i:i+len(pairs)]
-        i+=len(pairs)
+    i=0
+    for labels in real_labels:
+        scores = model_scores[i:i+len(labels)]
+        i+=len(labels)
         
-        for idx, pair in enumerate(scores):
-            sorted_pair = torch.zeros_like(pair)
-            sorted_pair = sorted_pair.index_copy_(0, torch.tensor(indices[idx]).type(torch.int64), pair)
-            y[pairs[idx][sorted_pair.argmax()]] += 1
-            
+        scores = torch.softmax(scores, dim=0)
+        y = {rid: score[0] for rid, score in zip(labels.keys(), scores.tolist())}
         y = dict(sorted(y.items(), key=lambda item: item[1], reverse=True))
         ranks.append(str(y))
         y = [labels[rid] for rid in y.keys()]
@@ -99,17 +115,20 @@ def get_real_labels(model_scores, mode):
         
     return ranked_labels, ranks
 
-def absolute_recall_mrr_ndcg_for_ks(scores, labels, ks, mode):
+def absolute_recall_mrr_ndcg_for_ks(scores, mode, num_candidates, ret_model, summary):
     mode = 'valid' if mode == 'eval' else 'test'
     real_labels, rank = get_real_labels(scores, mode)
     eval_df = pd.DataFrame(real_labels, columns=['y'])
     eval_df['rank'] = rank
     eval_df['y'] = eval_df['y'].apply(eval)
     
-    y_true_df = pd.read_csv(
-        f'/sise/bshapira-group/lilachzi/models/LlamaRec/data/preprocessed/ciao_{args.category}_{args.signal}/{mode}_candidates.csv',
+    summary = '' if not summary else f'_{summary}'
+    y_true_df = pd.read_csv(os.path.join(
+        f'/sise/bshapira-group/lilachzi/models/LlamaRec/data/preprocessed/ciao_{args.category.replace(" & ", "_")}_{args.signal}',
+        f'{ret_model}_{mode}_{str(num_candidates)}_candidates.csv'),
         converters={'y_true': eval}
     )
+    y_true_df = y_true_df[:len(eval_df)]
     eval_df['y_true'] = y_true_df['y_true'].tolist()
     eval_df['y_true'] = eval_df.apply(
         lambda r: list(r['y_true'].values())[len(r['y']):] if len(r['y_true']) > len(r['y']) else [], axis=1

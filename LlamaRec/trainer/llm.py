@@ -66,13 +66,13 @@ def llama_collate_fn_w_truncation(llm_max_length, eval=False):
     return llama_collate_fn
 
 
-def compute_metrics_for_ks(ks, verbalizer):
+def compute_metrics_for_ks(verbalizer, num_candidates, ret_model, summary):
     def compute_metrics(eval_pred, prefix=''):
         logits, labels = eval_pred
         logits = torch.tensor(logits)
         labels = torch.tensor(labels).view(-1)
         scores = verbalizer.process_logits(logits)
-        metrics = absolute_recall_mrr_ndcg_for_ks(scores, labels, ks, prefix)
+        metrics = absolute_recall_mrr_ndcg_for_ks(scores, prefix, num_candidates, ret_model, summary)
         return metrics
     return compute_metrics
 
@@ -104,8 +104,6 @@ class LLMTrainer(Trainer):
         )
         
         wandb_run_name = f'LlamaRec_{args.dataset_code}{args.category.replace(" & ", "_")}_{args.signal}{args.test}'
-        if args.summary:
-            wandb_run_name = wandb_run_name + '_summary'
 
         hf_args = TrainingArguments(
             per_device_train_batch_size=args.lora_micro_batch_size,
@@ -146,7 +144,7 @@ class LLMTrainer(Trainer):
         self.train_loader.collate_fn = llama_collate_fn_w_truncation(self.llm_max_text_len, eval=False)
         self.val_loader.collate_fn = llama_collate_fn_w_truncation(self.llm_max_text_len, eval=True)
         self.test_loader.collate_fn = llama_collate_fn_w_truncation(self.llm_max_text_len, eval=True)
-        self.compute_metrics = compute_metrics_for_ks(self.rerank_metric_ks, self.verbalizer)
+        self.compute_metrics = compute_metrics_for_ks(self.verbalizer, args.llm_num_candidates, args.retreival_model, args.summary)
 
         if len(self.label_names) == 0:
             self.label_names = ['labels']  # for some reason label name is not set

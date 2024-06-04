@@ -283,7 +283,7 @@ if __name__ == '__main__':
     
     lr = 0.0001
     weight_decay = 0
-    dropout_rate = 0.1
+    dropout_rate = 0.5
                 
     run_name = f'Ciao{args.category}_{args.signal}_{args.sub_feats_type}{args.feats_type}_{lr}_{weight_decay}_{dropout_rate}_{args.batch_size}'
     wandb.init(

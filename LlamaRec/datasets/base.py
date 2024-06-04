@@ -124,8 +124,6 @@ class AbstractDataset(metaclass=ABCMeta):
         preprocessed_root = self._get_preprocessed_root_path()
         if 'ciao' in self.code():
             folder_name = '{}_{}_{}'.format(self.code(), self.category.replace(" & ", "_"), self.signal)
-            if self.args.summary:
-                folder_name = folder_name + '_summary'
         else:
             folder_name = '{}_min_rating{}-min_uc{}-min_sc{}' \
                 .format(self.code(), self.min_rating, self.min_uc, self.min_sc)
@@ -133,4 +131,5 @@ class AbstractDataset(metaclass=ABCMeta):
 
     def _get_preprocessed_dataset_path(self):
         folder = self._get_preprocessed_folder_path()
-        return folder.joinpath(f'dataset_{str(self.args.llm_num_candidates)}_pw.pkl')
+        summary = '' if not self.args.summary else f'_{self.args.summary}'
+        return folder.joinpath(f'{self.args.retreival_model}_dataset_{str(self.args.llm_num_candidates)}_pw{summary}.pkl')
