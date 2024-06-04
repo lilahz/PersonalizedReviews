@@ -39,9 +39,9 @@ def load_ciao_data(category, signal, feats_type, sub_feats_type = ''):
     
     features = []
     if feats_type == 1:
-        features = np.load(os.path.join(features_path, f'/{sub_feats_type}explicit_features.npz'))
+        features = np.load(os.path.join(features_path, f'{sub_feats_type}explicit_features.npz'))
     elif feats_type == 2:
-        features = np.load(os.path.join(features_path, f'/{sub_feats_type}implicit_features.npz'))
+        features = np.load(os.path.join(features_path, f'{sub_feats_type}implicit_features.npz'))
     
     print(f'Data loading finished after {time.time() - start_time:.2f} seconds')
 
@@ -96,26 +96,25 @@ def get_metapaths_info(signal):
                     [True, True, False]]
         no_masks = [[False] * mp for mp in num_metapaths_list]
     elif signal == 'write':
-        # TODO: change to the real values of write
-        # 0: user liked review, 1: review liked by user, 2: review under product
-        # 3: product contains review, 4: user liked review under product, 5: product contains review liked by user
+        # 0: user wrote review, 1: review written by user, 2: review under product
+        # 3: product contains review, 4: user wrote review under product, 5: product contains review written by user
         etypes_lists = [[[0, 2, 3, 1], [4, 5]],
                         [[1, 0], [2, 5, 4, 3], [2, 3]]]
         num_metapaths_list = [len(lst) for lst in etypes_lists]
         num_edge_type = 6
-        use_masks = [[True, True, False],
+        use_masks = [[True, False],
                     [True, True, False]]
         no_masks = [[False] * mp for mp in num_metapaths_list]
     elif signal == 'both':
-        # TODO: change to the real values of both
-        # 0: user liked review, 1: review liked by user, 2: review under product
-        # 3: product contains review, 4: user liked review under product, 5: product contains review liked by user
-        etypes_lists = [[[0, 1], [0, 2, 3, 1], [4, 5]],
-                        [[1, 0], [2, 3], [2, 5, 4, 3]]]
+        # 0: user liked review, 1: review liked by user, 2: review under product, 3: product contains review
+        # 4: user wrote review under product, 5: product contains review written by user
+        # 6: user written review, 7: review written by user
+        etypes_lists = [[[0, 1], [0, 2, 3, 1], [4, 5], [6, 2, 3, 7]],
+                        [[1, 0], [2, 5, 4, 3], [2, 3], [7, 6]]]
         num_metapaths_list = [len(lst) for lst in etypes_lists]
-        num_edge_type = 6
-        use_masks = [[True, True, False],
-                    [True, False, True]]
+        num_edge_type = 8
+        use_masks = [[True, True, True, False],
+                    [True, True, False, False]]
         no_masks = [[False] * mp for mp in num_metapaths_list]
     else:
         raise Exception('wrong signal was given.')

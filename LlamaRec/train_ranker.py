@@ -30,10 +30,7 @@ except:
 def main(args, export_root=None):
     seed_everything(args.seed)
     if export_root == None:
-        if args.summary:
-            export_root = os.path.join(EXPERIMENT_ROOT, f'{args.dataset_code}{args.category.replace(" & ", "_")}_{args.signal}{args.test}_summary')
-        else:
-            export_root = os.path.join(EXPERIMENT_ROOT, f'{args.dataset_code}{args.category.replace(" & ", "_")}_{args.signal}{args.test}')
+        export_root = os.path.join(EXPERIMENT_ROOT, f'{args.dataset_code}{args.category.replace(" & ", "_")}_{args.signal}{args.test}')
         args.export_root = export_root
         
         if not os.path.exists(export_root):

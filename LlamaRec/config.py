@@ -16,7 +16,7 @@ def set_template(args):
     batch = 8
     
     print(f'DEBUG: {args.dataset_code}{args.category} - {args.signal}')
-    args.test = f'_8B_chat_b_{batch}_c_{args.llm_negative_sample_size + 1}_bs_{args.llm_bootstrap}_lr_{args.lora_lr}'
+    args.test = f'_{args.retreival_model}_chat_b_{batch}_c_{args.llm_num_candidates}_lr_{args.lora_lr}_pw_{args.summary}_v3_prompt'
     print(f'DEBUG: {args.test}')
 
     args.lora_micro_batch_size = batch
@@ -25,7 +25,7 @@ def set_template(args):
     args.val_batch_size = batch
     args.test_batch_size = batch
     
-    args.llm_max_history = 15
+    args.llm_max_history = 5
 
     if torch.cuda.is_available(): args.device = 'cuda'
     else: args.device = 'cpu'
@@ -59,7 +59,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--dataset_code', type=str, default='ciao')
 parser.add_argument('--category', type=str, default='Beauty')
 parser.add_argument('--signal', type=str, default='like')
-parser.add_argument('--summary', type=bool, default=False)
+parser.add_argument('--summary', type=str, default=None)
 parser.add_argument('--export_root', type=str, default=None)
 parser.add_argument('--min_rating', type=int, default=0)
 parser.add_argument('--min_uc', type=int, default=5)
@@ -109,7 +109,7 @@ parser.add_argument('--use_wandb', type=bool, default=True)
 ################
 # Retriever Model
 ################
-parser.add_argument('--model_code', type=str, default=None)
+parser.add_argument('--retreival_model', type=str, default=None)
 parser.add_argument('--bert_max_len', type=int, default=50)
 parser.add_argument('--bert_hidden_units', type=int, default=64)
 parser.add_argument('--bert_num_blocks', type=int, default=2)
@@ -122,23 +122,24 @@ parser.add_argument('--bert_mask_prob', type=float, default=0.25)
 ################
 # LLM Model
 ################
-# parser.add_argument('--llm_base_model', type=str, default='meta-llama/Llama-2-7b-chat-hf')
-# parser.add_argument('--llm_base_tokenizer', type=str, default='meta-llama/Llama-2-7b-chat-hf')
-parser.add_argument('--llm_base_model', type=str, default='meta-llama/Meta-Llama-3-8B-Instruct')
-parser.add_argument('--llm_base_tokenizer', type=str, default='meta-llama/Meta-Llama-3-8B-Instruct')
+parser.add_argument('--llm_base_model', type=str, default='meta-llama/Llama-2-7b-chat-hf')
+parser.add_argument('--llm_base_tokenizer', type=str, default='meta-llama/Llama-2-7b-chat-hf')
+# parser.add_argument('--llm_base_model', type=str, default='meta-llama/Meta-Llama-3-8B-Instruct')
+# parser.add_argument('--llm_base_tokenizer', type=str, default='meta-llama/Meta-Llama-3-8B-Instruct')
 parser.add_argument('--llm_max_title_len', type=int, default=50)
-parser.add_argument('--llm_max_text_len', type=int, default=2500)
+parser.add_argument('--llm_max_text_len', type=int, default=2000)
 parser.add_argument('--llm_max_history', type=int, default=20)
 parser.add_argument('--llm_train_on_inputs', type=bool, default=False)
-parser.add_argument('--llm_negative_sample_size', type=int, default=9)  # 19 negative & 1 positive
-parser.add_argument('--llm_bootstrap', type=int, default=3)
+parser.add_argument('--llm_negative_sample_size', type=int, default=0)  # 19 negative & 1 positive
+parser.add_argument('--llm_num_candidates', type=int, default=20)
+parser.add_argument('--llm_bootstrap', type=int, default=1)
 # parser.add_argument('--llm_system_template', type=str,  # instruction
 #     default="Given user history of reviews they previously {}, recommend the reviews the user will like the most from the candidate pool using the reviews index letters.")
 parser.add_argument('--llm_system_template', type=str,  # instruction
-    default="Based on given user history of reviews previously {}, " \
-            "return the index letter of the review the user will like from the candidate reviews.")
+    default="Those are the reviews I {} recently. " \
+            "Based on my review history, Will I like the given candidate review?")
 parser.add_argument('--llm_input_template', type=str, \
-    default='User {} history: {}; \n Candidate reviews for product {}: {}')
+    default='User {} history: {}; \n Candidate review for product {}: {}')
 parser.add_argument('--llm_load_in_4bit', type=bool, default=True)
 parser.add_argument('--llm_retrieved_path', type=str, default=None)
 parser.add_argument('--llm_cache_dir', type=str, default=None)
@@ -150,8 +151,8 @@ parser.add_argument('--lora_r', type=int, default=16)
 parser.add_argument('--lora_alpha', type=int, default=64)
 parser.add_argument('--lora_dropout', type=float, default=0.05)
 parser.add_argument('--lora_target_modules', type=list, default=['q_proj', 'v_proj'])
-parser.add_argument('--lora_num_epochs', type=int, default=1)
-parser.add_argument('--lora_val_iterations', type=int, default=100)
+parser.add_argument('--lora_num_epochs', type=int, default=5)
+parser.add_argument('--lora_val_iterations', type=int, default=1000)
 parser.add_argument('--lora_early_stopping_patience', type=int, default=2)
 parser.add_argument('--lora_lr', type=float, default=5e-4)
 parser.add_argument('--lora_micro_batch_size', type=int, default=16)

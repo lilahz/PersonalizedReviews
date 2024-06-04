@@ -482,7 +482,8 @@ class ManualVerbalizer(Verbalizer):
             :obj:`torch.Tensor`: The normalized logits of label words
         """
 
-        label_words_logits = logits[:, self.label_words_ids]
+        # label_words_logits = logits[:, self.label_words_ids]
+        label_words_logits = logits.reshape(logits.shape[0], logits.shape[1], 1, 1) # no need to filter based on label word ids, because we did that in model/llm.py @ forward
         label_words_logits = self.handle_multi_token(label_words_logits, self.words_ids_mask)
         label_words_logits -= 10000*(1-self.label_words_mask)
         return label_words_logits
