@@ -86,7 +86,7 @@ def seq_to_token_ids(args, seq, candidates, label, product, text_dict, tokenizer
         system_template = args.llm_system_template.format(prompt_signal)
     else:
         system_template = DEFAULT_SYSTEM_PROMPT
-    input_template = args.llm_input_template.format(prompt_signal, seq_t, product, can_t)
+    input_template = args.llm_input_template.format(seq_t, product, can_t)
     
     data_point = {}
     data_point['system'] = system_template
